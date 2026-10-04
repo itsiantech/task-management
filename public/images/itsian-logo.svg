@@ -1,0 +1,8 @@
+<svg width="320" height="120" viewBox="0 0 320 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="12" y="12" width="92" height="92" rx="18" fill="#111827"/>
+  <path d="M34 31H61C69.8366 31 77 38.1634 77 47V74C77 82.8366 69.8366 90 61 90H34V31ZM49 46H58.5C62.6421 46 66 49.3579 66 53.5C66 57.6421 62.6421 61 58.5 61H49V46ZM49 66H59.5C64.1944 66 68 69.8056 68 74.5C68 79.1944 64.1944 83 59.5 83H49V66Z" fill="#F5F5F4"/>
+  <path d="M92 34H109V83H92V34Z" fill="#F59E0B"/>
+  <path d="M120 35H147V48H120V35ZM120 56H147V69H120V56ZM120 77H147V90H120V77Z" fill="#111827"/>
+  <text x="156" y="58" fill="#111827" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="700">ITSIAN</text>
+  <text x="156" y="82" fill="#6B7280" font-family="Arial, Helvetica, sans-serif" font-size="12" letter-spacing="3">DIGITAL SOLUTIONS</text>
+</svg>
