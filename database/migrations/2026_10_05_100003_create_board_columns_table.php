@@ -6,23 +6,23 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
+        if (Schema::hasTable('board_columns')) {
+            return;
+        }
+
         Schema::create('board_columns', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('board_id')->constrained()->onDelete('cascade');
+            $table->foreignId('board_id')->constrained()->cascadeOnDelete();
             $table->string('title');
-            $table->integer('position')->default(0);
+            $table->unsignedInteger('position')->default(0);
             $table->timestamps();
+
+            $table->index(['board_id', 'position']);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('board_columns');

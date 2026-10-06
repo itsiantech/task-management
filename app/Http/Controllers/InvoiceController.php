@@ -71,7 +71,7 @@ class InvoiceController extends Controller
                 'payment_method' => $validated['payment_method'] ?? 'bank',
                 'advance_paid_credit' => $validated['advance_paid_credit'] ?? 0,
                 'notes' => $validated['notes'] ?? null,
-                'published_at' => $validated['published_at'] ?? null,
+                'published_at' => null,
             ]);
 
             foreach ($items as $item) {

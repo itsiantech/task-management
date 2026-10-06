@@ -45,6 +45,12 @@ return [
         'whatsapp_phone_number_id' => env('META_WHATSAPP_PHONE_NUMBER_ID', env('WHATSAPP_PHONE_NUMBER_ID')),
     ],
 
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI', rtrim((string) env('APP_URL', 'http://localhost'), '/').'/auth/google/callback'),
+    ],
+
     'facebook' => [
         'page_id' => env('FACEBOOK_PAGE_ID', env('META_FACEBOOK_PAGE_ID')),
         'page_access_token' => env('FACEBOOK_PAGE_ACCESS_TOKEN', env('META_FACEBOOK_PAGE_TOKEN')),

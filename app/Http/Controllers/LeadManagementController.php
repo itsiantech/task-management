@@ -123,7 +123,7 @@ class LeadManagementController extends Controller
         $lead = AssignedLead::create($validated);
 
         if ($request->has('member_ids')) {
-            $memberIds = collect($request->input('member_ids', []))->filter()->map((int) fn ($id) => $id)->all();
+            $memberIds = collect($request->input('member_ids', []))->filter()->map(fn ($id) => (int) $id)->all();
             if (! empty($memberIds)) {
                 $lead->assignedMembers()->sync($memberIds);
             }
@@ -213,7 +213,7 @@ class LeadManagementController extends Controller
         $assignedLead->update($validated);
 
         if ($request->has('member_ids')) {
-            $memberIds = collect($request->input('member_ids', []))->filter()->map((int) fn ($id) => $id)->all();
+            $memberIds = collect($request->input('member_ids', []))->filter()->map(fn ($id) => (int) $id)->all();
             if (! empty($memberIds)) {
                 $assignedLead->assignedMembers()->sync($memberIds);
             }

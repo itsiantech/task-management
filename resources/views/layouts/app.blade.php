@@ -6,6 +6,8 @@
     $financialRoute = $isAdmin ? route('admin.payments') : route('payments.member');
     $membersRoute = $isAdmin ? route('admin.members') : route('payments.member');
     $leadNavOpen = request()->routeIs('lead-management.*') || request()->routeIs('clients.*');
+    $siteTitle = \App\Models\Setting::get('site_title', 'ITsian CRM');
+    $siteLogo = \App\Models\Setting::logoUrl();
 @endphp
 
 <!DOCTYPE html>
@@ -14,7 +16,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="csrf-token" content="{{ csrf_token() }}">
-        <title>@yield('title', 'Workspace')</title>
+        <title>@hasSection('title')@yield('title') | {{ $siteTitle }}@else{{ $siteTitle }}@endif</title>
         <script src="https://cdn.tailwindcss.com"></script>
     </head>
     <body class="bg-[#f3f4f6] text-slate-800 antialiased">
@@ -22,6 +24,13 @@
             <div id="mobileSidebarOverlay" class="fixed inset-0 z-30 hidden bg-slate-900/30 md:hidden"></div>
 
             <aside id="sidebar" class="hidden md:flex md:w-64 md:sticky md:top-0 md:h-screen md:flex-shrink-0 md:flex-col md:border-r md:border-slate-200 md:bg-[#f5f5f4] md:px-4 md:py-6 md:shadow-none">
+                <div class="mb-4 flex items-center gap-3 px-2">
+                    @if ($siteLogo)
+                        <img src="{{ $siteLogo }}" alt="{{ $siteTitle }}" class="h-9 w-9 rounded-lg object-contain">
+                    @endif
+                    <span class="truncate text-base font-bold text-slate-900">{{ $siteTitle }}</span>
+                </div>
+
                 <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur-sm">
                     <div class="flex items-center gap-3">
                         <div class="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-slate-800 to-slate-500 text-sm font-semibold text-white">
@@ -71,6 +80,14 @@
                                 <path d="M9 11h6M9 15h6" stroke-linecap="round"/>
                             </svg>
                             Invoice
+                        </a>
+
+                        <a href="{{ route('boards.index') }}" class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium {{ request()->routeIs('boards.*') ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:bg-white hover:text-slate-900' }}">
+                            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <rect x="3" y="4" width="18" height="16" rx="2"/>
+                                <path d="M8 8v6M12 8v9M16 8v4" stroke-linecap="round"/>
+                            </svg>
+                            Kanban Boards
                         </a>
 
                         <div data-lead-menu-group class="rounded-xl {{ $leadNavOpen ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600' }}">
@@ -124,12 +141,22 @@
                         @endif
 
                         @if ($isAdmin)
-                            <a href="{{ route('settings.integrations') }}" class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium {{ request()->routeIs('settings.*') ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:bg-white hover:text-slate-900' }}">
+                            <a href="{{ route('settings.integrations') }}" class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium {{ request()->routeIs('settings.integrations*') ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:bg-white hover:text-slate-900' }}">
                                 <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8">
                                     <path d="M12 3v3M12 18v3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M3 12h3M18 12h3M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12" stroke-linecap="round"/>
                                     <circle cx="12" cy="12" r="4"/>
                                 </svg>
                                 Integrations
+                            </a>
+
+                            <a href="{{ route('settings.index') }}" class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium {{ request()->routeIs('settings.index', 'settings.logo', 'settings.profile', 'settings.password') ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:bg-white hover:text-slate-900' }}">
+                                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8">
+                                    <path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h12M20 18h0" stroke-linecap="round"/>
+                                    <circle cx="16" cy="6" r="2"/>
+                                    <circle cx="8" cy="12" r="2"/>
+                                    <circle cx="18" cy="18" r="2"/>
+                                </svg>
+                                Setup
                             </a>
                         @endif
                     </div>
@@ -193,6 +220,13 @@
                         </svg>
                         Social Chat
                     </a>
+                    <a href="{{ route('boards.index') }}" class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium {{ request()->routeIs('boards.*') ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:bg-white hover:text-slate-900' }}">
+                        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <rect x="3" y="4" width="18" height="16" rx="2"/>
+                            <path d="M8 8v6M12 8v9M16 8v4" stroke-linecap="round"/>
+                        </svg>
+                        Kanban Boards
+                    </a>
                     <div data-lead-menu-group class="rounded-xl {{ $leadNavOpen ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600' }}">
                         <button type="button" data-lead-menu-toggle class="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm font-medium focus:outline-none" aria-expanded="{{ $leadNavOpen ? 'true' : 'false' }}">
                             <span class="flex items-center gap-3">
@@ -240,12 +274,21 @@
                         </a>
                     @endif
                     @if ($isAdmin)
-                        <a href="{{ route('settings.integrations') }}" class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium {{ request()->routeIs('settings.*') ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:bg-white hover:text-slate-900' }}">
+                        <a href="{{ route('settings.integrations') }}" class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium {{ request()->routeIs('settings.integrations*') ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:bg-white hover:text-slate-900' }}">
                             <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8">
                                 <path d="M12 3v3M12 18v3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M3 12h3M18 12h3M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12" stroke-linecap="round"/>
                                 <circle cx="12" cy="12" r="4"/>
                             </svg>
                             Integrations
+                        </a>
+                        <a href="{{ route('settings.index') }}" class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium {{ request()->routeIs('settings.index', 'settings.logo', 'settings.profile', 'settings.password') ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:bg-white hover:text-slate-900' }}">
+                            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h12M20 18h0" stroke-linecap="round"/>
+                                <circle cx="16" cy="6" r="2"/>
+                                <circle cx="8" cy="12" r="2"/>
+                                <circle cx="18" cy="18" r="2"/>
+                            </svg>
+                            Setup
                         </a>
                     @endif
                     <form action="{{ route('logout') }}" method="POST" class="pt-4">
