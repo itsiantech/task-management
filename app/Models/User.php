@@ -27,6 +27,14 @@ class User extends Authenticatable
         'is_approved',
         'google_id',
         'avatar',
+        'member_code',
+        'phone',
+        'family_phone',
+        'present_address',
+        'permanent_address',
+        'nid_path',
+        'cv_path',
+        'monthly_salary',
     ];
 
     /**
@@ -50,6 +58,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_approved' => 'boolean',
+            'monthly_salary' => 'decimal:2',
         ];
     }
 
@@ -80,6 +89,27 @@ class User extends Authenticatable
     public function payments()
     {
         return $this->hasMany(Payment::class);
+    }
+
+    public function announcements()
+    {
+        return $this->belongsToMany(Announcement::class, 'announcement_recipients')->withPivot('read_at')->withTimestamps();
+    }
+
+    public function announcementRecipients()
+    {
+        return $this->hasMany(AnnouncementRecipient::class);
+    }
+
+    public static function nextMemberCode(): string
+    {
+        $max = (int) static::query()
+            ->whereNotNull('member_code')
+            ->where('member_code', 'like', 'M-%')
+            ->selectRaw('MAX(CAST(SUBSTR(member_code, 3) AS INTEGER)) as max_code')
+            ->value('max_code');
+
+        return 'M-' . str_pad((string) ($max + 1), 4, '0', STR_PAD_LEFT);
     }
 
     public function clientNotes()

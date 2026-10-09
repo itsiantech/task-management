@@ -2,6 +2,15 @@
 
 @section('title', $board->name)
 
+@push('head')
+<link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+<style>
+    #boardNotesEditor .ql-editor { min-height: 6rem; max-height: 55vh; overflow-y: auto; }
+    #editBoardDescriptionEditor .ql-editor { min-height: 6rem; max-height: 35vh; overflow-y: auto; }
+</style>
+@endpush
+
 @section('content')
 @php
     $boardData = [
@@ -40,8 +49,8 @@
                 <span class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide {{ $board->is_private ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700' }}">{{ $board->is_private ? 'Private' : 'Team' }}</span>
                 <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">{{ $role }}</span>
             </div>
-            @if ($board->description)
-                <p class="mt-1 text-sm text-slate-500">{{ $board->description }}</p>
+            @if (trim(strip_tags((string) $board->description)) !== '')
+                <p class="mt-1 text-sm text-slate-500">{{ \Illuminate\Support\Str::limit(trim(strip_tags((string) $board->description)), 180) }}</p>
             @endif
         </div>
 
@@ -63,6 +72,15 @@
                 </form>
             @endif
         </div>
+    </div>
+
+    {{-- Board notes: rich text, auto-saved, scrollable --}}
+    <div class="mb-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Board notes</h2>
+            <span id="notesSaveStatus" class="text-xs text-slate-400"></span>
+        </div>
+        <div id="boardNotesEditor"></div>
     </div>
 
     {{-- Board --}}
@@ -198,15 +216,16 @@
                 <h2 class="text-lg font-semibold text-slate-900">Edit board</h2>
                 <button type="button" data-close-modal class="text-2xl leading-none text-slate-400 hover:text-slate-600" aria-label="Close">&times;</button>
             </div>
-            <form action="{{ route('boards.update', $board) }}" method="POST" class="space-y-4">
+            <form action="{{ route('boards.update', $board) }}" method="POST" class="space-y-4" id="editBoardForm">
                 @csrf @method('PUT')
                 <div>
-                    <label class="mb-1 block text-sm font-medium text-slate-700">Name</label>
+                    <label class="mb-1 block text-sm font-medium text-slate-700">Board title</label>
                     <input name="name" type="text" required maxlength="255" value="{{ $board->name }}" class="{{ $inputClass }}">
                 </div>
                 <div>
-                    <label class="mb-1 block text-sm font-medium text-slate-700">Description</label>
-                    <textarea name="description" rows="3" maxlength="2000" class="{{ $inputClass }}">{{ $board->description }}</textarea>
+                    <label class="mb-1 block text-sm font-medium text-slate-700">Description <span class="font-normal text-slate-400">(rich text, unlimited)</span></label>
+                    <div id="editBoardDescriptionEditor"></div>
+                    <input type="hidden" name="description" id="editBoardDescriptionInput" value="{{ $board->description }}">
                 </div>
                 <label class="flex items-start gap-2 text-sm text-slate-600">
                     <input type="hidden" name="is_private" value="0">
@@ -452,6 +471,62 @@
             updateCounts();
         } catch (err) { toast(err.message); }
     });
+
+    /* ---------- board notes rich editor (auto-save) ---------- */
+    const QUILL_TOOLBAR = [
+        [{ header: [2, 3, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ list: 'ordered' }, { list: 'bullet' }],
+        ['blockquote', 'code-block', 'link'],
+        ['clean'],
+    ];
+
+    function setQuillContent(quill, content) {
+        const value = (content || '').toString();
+        if (/<[a-z][\s\S]*>/i.test(value)) quill.clipboard.dangerouslyPasteHTML(value);
+        else quill.setText(value);
+    }
+
+    const NOTES_TOOLBAR = canEdit ? QUILL_TOOLBAR : false;
+    const notesQuill = new Quill('#boardNotesEditor', {
+        theme: 'snow',
+        readOnly: !canEdit,
+        modules: { toolbar: NOTES_TOOLBAR },
+    });
+    setQuillContent(notesQuill, @json((string) $board->description));
+
+    const notesStatus = $('notesSaveStatus');
+    function setNotesStatus(text) { notesStatus.textContent = text; }
+
+    if (canEdit) {
+        let notesTimer = null;
+        notesQuill.on('text-change', () => {
+            setNotesStatus('Typing...');
+            clearTimeout(notesTimer);
+            notesTimer = setTimeout(saveNotes, 1200);
+        });
+    }
+
+    async function saveNotes() {
+        setNotesStatus('Saving...');
+        const html = notesQuill.getText().trim() === '' ? '' : notesQuill.root.innerHTML;
+        try {
+            await api('PATCH', `${BASE}/description`, { description: html });
+            setNotesStatus('All changes saved');
+        } catch (err) {
+            setNotesStatus('Save failed \u2014 ' + err.message);
+        }
+    }
+
+    /* ---------- edit board modal (rich description, owner only) ---------- */
+    if ($('editBoardDescriptionEditor')) {
+        const editDescQuill = new Quill('#editBoardDescriptionEditor', { theme: 'snow', modules: { toolbar: QUILL_TOOLBAR } });
+        const editDescInput = $('editBoardDescriptionInput');
+        setQuillContent(editDescQuill, editDescInput.value);
+        $('editBoardForm').addEventListener('submit', () => {
+            editDescInput.value = editDescQuill.getText().trim() === '' ? '' : editDescQuill.root.innerHTML;
+        });
+    }
 
     /* ---------- card modal ---------- */
     const cardModal = $('cardModal');

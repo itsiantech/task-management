@@ -14,11 +14,16 @@ class Conversation extends Model
         'sender_name',
         'assigned_to',
         'status',
+        'priority',
+        'follow_up',
+        'unread',
         'last_message_at',
     ];
 
     protected $casts = [
         'last_message_at' => 'datetime',
+        'follow_up' => 'boolean',
+        'unread' => 'boolean',
     ];
 
     public function messages(): HasMany

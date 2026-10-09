@@ -2,6 +2,14 @@
 
 @section('title', 'Kanban Boards')
 
+@push('head')
+<link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+<style>
+    #boardDescriptionEditor .ql-editor { min-height: 7rem; max-height: 40vh; overflow-y: auto; }
+</style>
+@endpush
+
 @section('content')
 <div class="mx-auto max-w-6xl">
     <div class="mb-6 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
@@ -30,7 +38,7 @@
                             {{ $board->is_private ? 'Private' : 'Team' }}
                         </span>
                     </div>
-                    <p class="mt-2 line-clamp-2 min-h-[2.5rem] text-sm text-slate-500">{{ $board->description ?: 'No description' }}</p>
+                    <p class="mt-2 line-clamp-2 min-h-[2.5rem] text-sm text-slate-500">{{ \Illuminate\Support\Str::limit(trim(strip_tags((string) $board->description)), 150) ?: 'No description' }}</p>
                     <div class="mt-4 flex items-center justify-between text-xs text-slate-500">
                         <span>{{ $board->columns_count }} lists &middot; {{ $board->cards_count }} cards</span>
                         <span class="capitalize">{{ $board->my_role }}</span>
@@ -52,15 +60,16 @@
             <h2 class="text-lg font-semibold text-slate-900">New Board</h2>
             <button type="button" data-close class="text-2xl leading-none text-slate-400 hover:text-slate-600" aria-label="Close">&times;</button>
         </div>
-        <form action="{{ route('boards.store') }}" method="POST" class="space-y-4">
+        <form action="{{ route('boards.store') }}" method="POST" class="space-y-4" id="newBoardForm">
             @csrf
             <div>
-                <label for="board_name" class="mb-1 block text-sm font-medium text-slate-700">Name</label>
+                <label for="board_name" class="mb-1 block text-sm font-medium text-slate-700">Board title</label>
                 <input id="board_name" name="name" type="text" required maxlength="255" value="{{ old('name') }}" placeholder="e.g. Client Logins" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200">
             </div>
             <div>
-                <label for="board_description" class="mb-1 block text-sm font-medium text-slate-700">Description</label>
-                <textarea id="board_description" name="description" rows="3" maxlength="2000" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200">{{ old('description') }}</textarea>
+                <label class="mb-1 block text-sm font-medium text-slate-700">Description <span class="font-normal text-slate-400">(rich text, unlimited)</span></label>
+                <div id="boardDescriptionEditor"></div>
+                <input type="hidden" name="description" id="boardDescriptionInput" value="{{ old('description') }}">
             </div>
             <label class="flex items-start gap-2 text-sm text-slate-600">
                 <input type="hidden" name="is_private" value="0">
@@ -84,6 +93,23 @@
         modal.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', close));
         modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+
+        const QUILL_TOOLBAR = [
+            [{ header: [2, 3, false] }],
+            ['bold', 'italic', 'underline', 'strike'],
+            [{ list: 'ordered' }, { list: 'bullet' }],
+            ['blockquote', 'code-block', 'link'],
+            ['clean'],
+        ];
+        const descInput = document.getElementById('boardDescriptionInput');
+        const quill = new Quill('#boardDescriptionEditor', { theme: 'snow', modules: { toolbar: QUILL_TOOLBAR } });
+        if (descInput.value) {
+            if (/<[a-z][\s\S]*>/i.test(descInput.value)) quill.clipboard.dangerouslyPasteHTML(descInput.value);
+            else quill.setText(descInput.value);
+        }
+        document.getElementById('newBoardForm').addEventListener('submit', () => {
+            descInput.value = quill.getText().trim() === '' ? '' : quill.root.innerHTML;
+        });
     })();
 </script>
 @endsection

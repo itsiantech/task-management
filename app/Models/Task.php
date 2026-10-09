@@ -64,6 +64,11 @@ class Task extends Model
         return $this->hasMany(TaskComment::class)->latest();
     }
 
+    public function corrections()
+    {
+        return $this->hasMany(TaskCorrection::class)->orderByDesc('correction_date')->orderByDesc('created_at');
+    }
+
     public function payments()
     {
         return $this->hasMany(Payment::class);

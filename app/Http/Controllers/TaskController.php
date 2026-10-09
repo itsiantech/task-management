@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Announcement;
+use App\Models\AnnouncementRecipient;
 use App\Models\Task;
 use App\Models\User;
+use App\Support\SafeHtml;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
@@ -68,7 +71,26 @@ class TaskController extends Controller
             'due_amount' => $allTasks->sum('due_amount'),
         ];
 
-        return view('tasks.index', compact('tasks', 'approvedMembers', 'pendingUsers', 'budgetSummary', 'hasTaskMembersTable', 'selectedStatus', 'taskCounts'));
+        $readAnnouncementIds = AnnouncementRecipient::where('user_id', $user->id)
+            ->whereNotNull('read_at')
+            ->pluck('announcement_id');
+
+        $dashboardAnnouncements = Announcement::query()
+            ->where(function ($query) use ($user) {
+                $query->where('target_type', 'all')
+                    ->orWhereHas('recipients', fn ($inner) => $inner->where('user_id', $user->id));
+            })
+            ->with('sender:id,name')
+            ->latest()
+            ->limit(6)
+            ->get()
+            ->map(function ($announcement) use ($readAnnouncementIds) {
+                $announcement->is_read = $readAnnouncementIds->contains($announcement->id);
+
+                return $announcement;
+            });
+
+        return view('tasks.index', compact('tasks', 'approvedMembers', 'pendingUsers', 'budgetSummary', 'hasTaskMembersTable', 'selectedStatus', 'taskCounts', 'dashboardAnnouncements'));
     }
 
     public function show(Task $task)
@@ -87,9 +109,30 @@ class TaskController extends Controller
             'assignee',
             $hasTaskMembersTable ? 'members' : null,
             'comments.user',
+            'corrections.user',
         ]));
 
         return view('tasks.show', compact('task'));
+    }
+
+    public function updateDescription(Request $request, Task $task)
+    {
+        $user = Auth::user();
+        $hasTaskMembersTable = Schema::hasTable('task_user');
+
+        $allowed = $user->isAdmin() || $task->assigned_to === $user->id || $task->created_by === $user->id || ($hasTaskMembersTable && $task->members()->where('users.id', $user->id)->exists());
+
+        abort_unless($allowed, 403, 'You do not have access to update this task.');
+
+        $validated = $request->validate([
+            'description' => ['nullable', 'string'],
+        ]);
+
+        $task->update([
+            'description' => SafeHtml::clean($validated['description'] ?? ''),
+        ]);
+
+        return response()->json(['ok' => true, 'saved_at' => now()->toISOString()]);
     }
 
     /**
@@ -109,7 +152,13 @@ class TaskController extends Controller
             'start_date' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date'],
             'priority' => ['nullable', Rule::in(['low', 'medium', 'high', 'urgent'])],
-            'tags' => ['nullable', 'array'],
+            'tags' => [
+                'nullable',
+                Rule::anyOf([
+                    ['string', 'max:2000'],
+                    ['array'],
+                ]),
+            ],
             'tags.*' => ['string', 'max:50'],
             'assigned_to' => ['nullable', 'exists:users,id', Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', 'member')->where('is_approved', true))],
             'assigned_users' => ['nullable', 'array'],
@@ -175,7 +224,13 @@ class TaskController extends Controller
             'start_date' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date'],
             'priority' => ['sometimes', 'nullable', Rule::in(['low', 'medium', 'high', 'urgent'])],
-            'tags' => ['nullable', 'array'],
+            'tags' => [
+                'nullable',
+                Rule::anyOf([
+                    ['string', 'max:2000'],
+                    ['array'],
+                ]),
+            ],
             'tags.*' => ['string', 'max:50'],
             'assigned_to' => ['sometimes', 'nullable', 'exists:users,id', Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', 'member')->where('is_approved', true))],
             'assigned_users' => ['nullable', 'array'],

@@ -24,10 +24,11 @@ class SocialChatController extends Controller
                 'conversations' => collect(),
                 'members' => collect(),
                 'selectedConversation' => null,
+                'counts' => ['all' => 0, 'priority' => 0, 'follow_up' => 0, 'facebook' => 0, 'whatsapp' => 0],
             ]);
         }
 
-        $query = Conversation::with(['assignee', 'messages'])->latest('last_message_at');
+        $query = Conversation::with(['assignee', 'messages.agent'])->latest('last_message_at');
 
         if (! Auth::user()->isAdmin()) {
             $query->where('assigned_to', Auth::id());
@@ -49,14 +50,57 @@ class SocialChatController extends Controller
             }
         }
 
+        if ($request->filled('search')) {
+            $search = trim((string) $request->search);
+            $query->where(function ($q) use ($search) {
+                $q->where('sender_name', 'like', '%' . $search . '%')
+                    ->orWhere('sender_id', 'like', '%' . $search . '%');
+            });
+        }
+
+        if ($request->filled('priority') && $request->priority !== 'all') {
+            if ($request->priority === 'none') {
+                $query->where('priority', 'none');
+            } else {
+                $query->where('priority', $request->priority);
+            }
+        }
+
+        if ($request->boolean('follow_up')) {
+            $query->where('follow_up', true);
+        }
+
         $conversations = $query->get();
         $members = User::where('is_approved', true)->get();
-        $selectedConversation = $conversations->first();
 
-        return view('social-chat.index', compact('conversations', 'members', 'selectedConversation'));
+        $countsQuery = Conversation::query();
+        if (! Auth::user()->isAdmin()) {
+            $countsQuery->where('assigned_to', Auth::id());
+        }
+        $counts = [
+            'all' => (clone $countsQuery)->count(),
+            'priority' => (clone $countsQuery)->where('priority', '<>', 'none')->count(),
+            'follow_up' => (clone $countsQuery)->where('follow_up', true)->count(),
+            'facebook' => (clone $countsQuery)->where('platform', 'facebook')->count(),
+            'whatsapp' => (clone $countsQuery)->where('platform', 'whatsapp')->count(),
+        ];
+
+        $selectedConversation = $request->filled('conversation')
+            ? $conversations->firstWhere('id', (int) $request->conversation)
+            : $conversations->first();
+
+        if ($request->filled('conversation') && ! $selectedConversation && Schema::hasTable('conversations')) {
+            $fallback = Conversation::with(['assignee', 'messages'])->find((int) $request->conversation);
+
+            if ($fallback && (Auth::user()->isAdmin() || $fallback->assigned_to === Auth::id())) {
+                $selectedConversation = $fallback;
+            }
+        }
+
+        return view('social-chat.index', compact('conversations', 'members', 'selectedConversation', 'counts'));
     }
 
-    public function show(Conversation $conversation)
+    public function show(Request $request, Conversation $conversation)
     {
         if (! Schema::hasTable('conversations') || ! Schema::hasTable('channel_messages')) {
             abort(404, 'Social chat tables have not been migrated yet.');
@@ -69,9 +113,44 @@ class SocialChatController extends Controller
         }
 
         $conversation->load(['assignee', 'messages.agent']);
-        $members = User::where('is_approved', true)->get();
 
-        return view('social-chat.show', compact('conversation', 'members'));
+        if ($conversation->unread) {
+            $conversation->update(['unread' => false]);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'conversation' => $this->serializeConversation($conversation),
+                'messages' => $conversation->messages->map(fn ($m) => $this->serializeMessage($m)),
+            ]);
+        }
+
+        return redirect()->route('social-chat.index', ['conversation' => $conversation->id]);
+    }
+
+    public function flags(Request $request, Conversation $conversation)
+    {
+        $user = Auth::user();
+
+        if (! $user->isAdmin() && $conversation->assigned_to !== $user->id) {
+            abort(403, 'You cannot update this conversation.');
+        }
+
+        $validated = $request->validate([
+            'priority' => ['nullable', 'in:none,high,medium,low'],
+            'follow_up' => ['nullable', 'boolean'],
+        ]);
+
+        $conversation->update([
+            'priority' => $validated['priority'] ?? $conversation->priority,
+            'follow_up' => $validated['follow_up'] ?? $conversation->follow_up,
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'priority' => $conversation->priority,
+            'follow_up' => $conversation->follow_up,
+        ]);
     }
 
     public function assign(Request $request, Conversation $conversation)
@@ -89,6 +168,17 @@ class SocialChatController extends Controller
             'assigned_to' => $validated['assigned_to'] ?? $conversation->assigned_to,
             'status' => $validated['status'] ?? ($validated['assigned_to'] ? 'assigned' : 'open'),
         ]);
+
+        if ($request->expectsJson()) {
+            $conversation->load('assignee');
+
+            return response()->json([
+                'ok' => true,
+                'assigned_to' => $conversation->assigned_to,
+                'assignee_name' => $conversation->assignee?->name,
+                'status' => $conversation->status,
+            ]);
+        }
 
         return back()->with('success', 'Conversation updated successfully.');
     }
@@ -194,6 +284,8 @@ class SocialChatController extends Controller
                         'attachment_url' => $attachmentUrl,
                         'attachment_type' => $attachmentType,
                     ]);
+
+                    $conversation->update(['unread' => true]);
                 }
             }
         }
@@ -226,7 +318,13 @@ class SocialChatController extends Controller
         }
 
         if ($messageText === '' && ! $attachmentUrl) {
-            return back()->with('error', 'Please enter a message or attach a file before sending.');
+            $errorMessage = 'Please enter a message or attach a file before sending.';
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $errorMessage], 422);
+            }
+
+            return back()->with('error', $errorMessage);
         }
 
         $sentSuccessfully = false;
@@ -255,11 +353,21 @@ class SocialChatController extends Controller
                 $message = 'Meta rejected the reply because it was outside the 24-hour messaging window. The app retried with a HUMAN_AGENT tag when allowed.';
             }
 
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message], 422);
+            }
+
             return back()->with('error', $message);
         }
 
         if (! $sentSuccessfully) {
-            return back()->with('error', 'Meta API rejected the reply. Please check the page token and permissions.');
+            $errorMessage = 'Meta API rejected the reply. Please check the page token and permissions.';
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $errorMessage], 422);
+            }
+
+            return back()->with('error', $errorMessage);
         }
 
         $storedMessage = ChannelMessage::create([
@@ -273,8 +381,17 @@ class SocialChatController extends Controller
 
         $conversation->update([
             'status' => 'assigned',
+            'unread' => false,
             'last_message_at' => $storedMessage->created_at,
         ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Reply sent successfully.',
+                'stored' => $this->serializeMessage($storedMessage->load('agent')),
+                'conversation' => $this->serializeConversation($conversation->fresh(['assignee'])),
+            ]);
+        }
 
         return back()->with('success', 'Reply sent successfully.');
     }
@@ -286,9 +403,43 @@ class SocialChatController extends Controller
         return match ($extension) {
             'jpg', 'jpeg', 'png', 'gif', 'webp' => 'image',
             'mp3', 'wav', 'm4a', 'aac' => 'audio',
+            'mp4', 'mov', 'avi', 'mkv', 'webm' => 'video',
             'pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt' => 'document',
             default => null,
         };
+    }
+
+    protected function serializeConversation(Conversation $conversation): array
+    {
+        return [
+            'id' => $conversation->id,
+            'platform' => $conversation->platform,
+            'sender_id' => $conversation->sender_id,
+            'sender_name' => $conversation->sender_name,
+            'status' => $conversation->status,
+            'priority' => $conversation->priority,
+            'follow_up' => (bool) $conversation->follow_up,
+            'unread' => (bool) $conversation->unread,
+            'assigned_to' => $conversation->assigned_to,
+            'assignee_name' => $conversation->assignee?->name,
+            'last_message_at' => optional($conversation->last_message_at)->toISOString(),
+            'profile_url' => $conversation->platform === 'facebook'
+                ? 'https://www.facebook.com/profile.php?id=' . $conversation->sender_id
+                : null,
+        ];
+    }
+
+    protected function serializeMessage(ChannelMessage $message): array
+    {
+        return [
+            'id' => $message->id,
+            'sender_type' => $message->sender_type,
+            'message_text' => $message->message_text,
+            'attachment_url' => $message->attachment_url,
+            'attachment_type' => $message->attachment_type,
+            'agent_name' => $message->agent?->name,
+            'created_at' => $message->created_at->format('Y-m-d H:i:s'),
+        ];
     }
 
     public function isImageAttachment(?string $attachmentUrl, ?string $attachmentType = null): bool

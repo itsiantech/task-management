@@ -18,6 +18,7 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <title>@hasSection('title')@yield('title') | {{ $siteTitle }}@else{{ $siteTitle }}@endif</title>
         <script src="https://cdn.tailwindcss.com"></script>
+        @stack('head')
     </head>
     <body class="bg-[#f3f4f6] text-slate-800 antialiased">
         <div class="min-h-screen flex flex-col md:flex-row bg-[#f3f4f6]">
@@ -290,7 +291,24 @@
                             </svg>
                             Setup
                         </a>
+
+                        <a href="{{ route('admin.announcements.index') }}" class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium {{ request()->routeIs('admin.announcements*') ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:bg-white hover:text-slate-900' }}">
+                            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <path d="M3 11v3a1 1 0 0 0 1 1h2l3 4h1V5H9l-3 4H4a1 1 0 0 0-1 1v2Z" stroke-linejoin="round"/>
+                                <path d="M15.5 9.5a3.5 3.5 0 0 1 0 5M18 7a7 7 0 0 1 0 10" stroke-linecap="round"/>
+                            </svg>
+                            Announcements
+                        </a>
                     @endif
+
+                    <a href="{{ route('profile.show') }}" class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium {{ request()->routeIs('profile.*') ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:bg-white hover:text-slate-900' }}">
+                        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <circle cx="12" cy="8" r="4"/>
+                            <path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5" stroke-linecap="round"/>
+                        </svg>
+                        My Profile
+                    </a>
+
                     <form action="{{ route('logout') }}" method="POST" class="pt-4">
                         @csrf
                         <button type="submit" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-600 transition hover:bg-rose-50 hover:text-rose-700">

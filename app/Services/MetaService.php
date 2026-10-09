@@ -71,10 +71,17 @@ class MetaService
                 'messaging_type' => 'RESPONSE',
             ];
 
-            if ($attachmentType === 'image') {
-                $payload['message'] = ['attachment' => ['type' => 'image', 'payload' => ['url' => $attachmentUrl]]];
-            } else {
+            $type = match ($attachmentType) {
+                'image' => 'image',
+                'audio' => 'audio',
+                'video' => 'video',
+                default => 'file',
+            };
+
+            if ($type === 'file' && ! preg_match('/\.[a-z0-9]+(\?.*)?$/i', parse_url($attachmentUrl, PHP_URL_PATH) ?: '')) {
                 $payload['message'] = ['text' => 'Attachment received: ' . $attachmentUrl];
+            } else {
+                $payload['message'] = ['attachment' => ['type' => $type, 'payload' => ['url' => $attachmentUrl]]];
             }
 
             return $this->sendFacebookReply($payload);

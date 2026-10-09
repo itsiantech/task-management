@@ -6,6 +6,7 @@ use App\Models\Board;
 use App\Models\BoardCard;
 use App\Models\BoardColumn;
 use App\Models\User;
+use App\Support\SafeHtml;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -41,14 +42,14 @@ class KanbanBoardController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:2000'],
+            'description' => ['nullable', 'string', 'max:1000000'],
             'is_private' => ['nullable', 'boolean'],
         ]);
 
         $board = DB::transaction(function () use ($validated, $request) {
             $board = Board::create([
                 'name' => trim($validated['name']),
-                'description' => $validated['description'] ?? null,
+                'description' => SafeHtml::clean($validated['description'] ?? ''),
                 'is_private' => $request->boolean('is_private', true),
                 'created_by' => Auth::id(),
             ]);
@@ -95,17 +96,31 @@ class KanbanBoardController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:2000'],
+            'description' => ['nullable', 'string', 'max:1000000'],
             'is_private' => ['nullable', 'boolean'],
         ]);
 
         $board->update([
             'name' => trim($validated['name']),
-            'description' => $validated['description'] ?? null,
+            'description' => SafeHtml::clean($validated['description'] ?? ''),
             'is_private' => $request->boolean('is_private'),
         ]);
 
         return redirect()->route('boards.show', $board)->with('success', 'Board updated successfully.');
+    }
+
+    /** Debounced auto-save target for the rich-text board notes editor. */
+    public function updateDescription(Request $request, Board $board): JsonResponse
+    {
+        $this->authorize('contribute', $board);
+
+        $validated = $request->validate([
+            'description' => ['nullable', 'string', 'max:1000000'],
+        ]);
+
+        $board->update(['description' => SafeHtml::clean($validated['description'] ?? '')]);
+
+        return response()->json(['ok' => true, 'saved_at' => now()->toISOString()]);
     }
 
     public function destroy(Board $board)

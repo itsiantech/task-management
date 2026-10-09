@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminApprovalController;
+use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\IntegrationSettingsController;
@@ -11,10 +12,12 @@ use App\Http\Controllers\LeadManagementController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SocialChatController;
 use App\Http\Controllers\TaskCommentController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\TaskCorrectionController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -60,9 +63,27 @@ Route::middleware(['auth', 'approved'])->group(function () {
     Route::put('/tasks/{task}/comments/{comment}', [TaskCommentController::class, 'update'])->name('task.comments.update');
     Route::delete('/tasks/{task}/comments/{comment}', [TaskCommentController::class, 'destroy'])->name('task.comments.destroy');
 
+    Route::patch('/tasks/{task}/description', [TaskController::class, 'updateDescription'])->name('tasks.description.update');
+
+    Route::post('/tasks/{task}/corrections', [TaskCorrectionController::class, 'store'])->name('task.corrections.store');
+    Route::put('/tasks/{task}/corrections/{correction}', [TaskCorrectionController::class, 'update'])->name('task.corrections.update');
+    Route::patch('/tasks/{task}/corrections/{correction}/status', [TaskCorrectionController::class, 'toggleStatus'])->name('task.corrections.status');
+    Route::delete('/tasks/{task}/corrections/{correction}', [TaskCorrectionController::class, 'destroy'])->name('task.corrections.destroy');
+
     // Payments (member view)
     Route::get('/payments', [PaymentController::class, 'memberLedger'])->name('payments.member');
     Route::get('/members/{user}/payments', [PaymentController::class, 'memberLedger'])->name('members.payments');
+    Route::get('/members/{user}/documents/{type}', [ProfileController::class, 'downloadDocument'])
+        ->where('type', 'nid|cv')
+        ->name('members.documents');
+
+    // Own profile
+    Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
+    Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+
+    // Announcements (mark as read)
+    Route::post('/announcements/{announcement}/read', [AnnouncementController::class, 'markRead'])->name('announcements.read');
 
     // Invoices
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
@@ -80,6 +101,7 @@ Route::middleware(['auth', 'approved'])->group(function () {
     Route::post('/social-chat/sync', [SocialChatController::class, 'sync'])->name('social-chat.sync');
     Route::get('/social-chat/{conversation}', [SocialChatController::class, 'show'])->name('social-chat.show');
     Route::post('/social-chat/{conversation}/assign', [SocialChatController::class, 'assign'])->name('social-chat.assign');
+    Route::patch('/social-chat/{conversation}/flags', [SocialChatController::class, 'flags'])->name('social-chat.flags');
     Route::post('/social-chat/{conversation}/reply', [SocialChatController::class, 'reply'])->name('social-chat.reply');
 
     // Kanban boards (access is enforced per board by BoardPolicy)
@@ -92,6 +114,7 @@ Route::middleware(['auth', 'approved'])->group(function () {
         Route::put('/boards/{board}', [KanbanBoardController::class, 'update'])->name('boards.update');
         Route::delete('/boards/{board}', [KanbanBoardController::class, 'destroy'])->name('boards.destroy');
         Route::post('/boards/{board}/share', [KanbanBoardController::class, 'share'])->name('boards.share');
+        Route::patch('/boards/{board}/description', [KanbanBoardController::class, 'updateDescription'])->name('boards.description.update');
 
         Route::post('/boards/{board}/columns', [KanbanBoardController::class, 'storeColumn'])->name('boards.columns.store');
         Route::put('/boards/{board}/columns/{column}', [KanbanBoardController::class, 'updateColumn'])->name('boards.columns.update');
@@ -114,8 +137,18 @@ Route::middleware(['auth', 'approved', 'admin'])->group(function () {
     Route::get('/admin/approvals', [AdminApprovalController::class, 'index'])->name('admin.approvals');
     Route::post('/admin/approvals/{user}', [AdminApprovalController::class, 'update'])->name('admin.approvals.update');
     Route::get('/admin/payments', [PaymentController::class, 'adminDashboard'])->name('admin.payments');
+    Route::post('/admin/payments', [PaymentController::class, 'store'])->name('admin.payments.store');
     Route::get('/admin/members', [PaymentController::class, 'memberDirectory'])->name('admin.members');
     Route::post('/admin/members', [MemberController::class, 'store'])->name('admin.members.store');
+    Route::get('/admin/members/{user}', [MemberController::class, 'show'])->name('admin.members.show');
+    Route::put('/admin/members/{user}', [MemberController::class, 'update'])->name('admin.members.update');
+    Route::delete('/admin/members/{user}', [MemberController::class, 'destroy'])->name('admin.members.destroy');
+    Route::put('/admin/members/{user}/password', [MemberController::class, 'resetPassword'])->name('admin.members.password');
+
+    // Announcements / notices
+    Route::get('/admin/announcements', [AnnouncementController::class, 'index'])->name('admin.announcements.index');
+    Route::post('/admin/announcements', [AnnouncementController::class, 'store'])->name('admin.announcements.store');
+    Route::delete('/admin/announcements/{announcement}', [AnnouncementController::class, 'destroy'])->name('admin.announcements.destroy');
 
     // Clients
     Route::get('/clients', [ClientController::class, 'index'])->name('clients.index');

@@ -9,14 +9,13 @@
             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-sky-600">Team</p>
             <h1 class="text-3xl font-bold text-slate-900">Member Directory</h1>
         </div>
-        <button type="button" id="openAddMember" class="inline-flex items-center justify-center rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-sky-500">
-            + Add Team Member
-        </button>
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="{{ route('admin.announcements.index') }}" class="inline-flex items-center justify-center rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-violet-500">Send Notice</a>
+            <button type="button" id="openAddMember" class="inline-flex items-center justify-center rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-sky-500">
+                + Add Team Member
+            </button>
+        </div>
     </div>
-
-    @if (session('success'))
-        <div class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ session('success') }}</div>
-    @endif
 
     <form method="GET" class="mb-8 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div class="flex flex-col gap-3 md:flex-row md:items-end">
@@ -35,27 +34,36 @@
             <table class="min-w-full divide-y divide-slate-200">
                 <thead class="bg-slate-50">
                     <tr>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">ID</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Member</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Email</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">This Month</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Ledger</th>
+                        <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-200 bg-white">
                     @forelse ($members as $member)
                         <tr>
-                            <td class="px-4 py-3 text-sm font-medium text-slate-900">{{ $member->name }}</td>
+                            <td class="px-4 py-3 text-sm font-semibold text-slate-500">{{ $member->member_code ?? '—' }}</td>
+                            <td class="px-4 py-3">
+                                <a href="{{ route('admin.members.show', $member) }}" class="text-sm font-medium text-sky-700 hover:text-sky-600">{{ $member->name }}</a>
+                                @if ($member->phone)
+                                    <p class="text-xs text-slate-500">{{ $member->phone }}</p>
+                                @endif
+                            </td>
                             <td class="px-4 py-3 text-sm text-slate-700">{{ $member->email }}</td>
-                            <td class="px-4 py-3 text-sm font-medium text-emerald-700">${{ number_format((float) ($member->payments?->sum('amount') ?? 0), 2) }}</td>
-                            <td class="px-4 py-3 text-sm">
-                                <a href="{{ route('members.payments', $member) }}?month_year={{ $monthYear }}" class="font-medium text-indigo-600 hover:text-indigo-500">
-                                    View ledger
-                                </a>
+                            <td class="px-4 py-3">
+                                <p class="text-sm font-medium text-emerald-700">${{ number_format((float) ($member->payments?->sum('amount') ?? 0), 2) }}</p>
+                                <button type="button" data-add-payment data-user-id="{{ $member->id }}" class="mt-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100">+ Add payment</button>
+                            </td>
+                            <td class="px-4 py-3 text-right text-sm">
+                                <a href="{{ route('admin.members.show', $member) }}" class="mr-3 font-medium text-sky-600 hover:text-sky-500">Profile</a>
+                                <a href="{{ route('members.payments', $member) }}?month_year={{ $monthYear }}" class="font-medium text-indigo-600 hover:text-indigo-500">Ledger</a>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="px-4 py-6 text-center text-sm text-slate-500">No approved members available.</td>
+                            <td colspan="5" class="px-4 py-6 text-center text-sm text-slate-500">No approved members available.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -92,6 +100,18 @@
                 </select>
                 @if ($addErrors->has('role'))<p class="mt-1 text-xs text-rose-600">{{ $addErrors->first('role') }}</p>@endif
             </div>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label for="member_phone" class="mb-1 block text-sm font-medium text-slate-700">Phone (optional)</label>
+                    <input id="member_phone" name="phone" type="text" value="{{ old('phone') }}" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-800 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200">
+                    @if ($addErrors->has('phone'))<p class="mt-1 text-xs text-rose-600">{{ $addErrors->first('phone') }}</p>@endif
+                </div>
+                <div>
+                    <label for="member_salary" class="mb-1 block text-sm font-medium text-slate-700">Monthly salary (optional)</label>
+                    <input id="member_salary" name="monthly_salary" type="number" step="0.01" min="0" value="{{ old('monthly_salary') }}" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-800 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200">
+                    @if ($addErrors->has('monthly_salary'))<p class="mt-1 text-xs text-rose-600">{{ $addErrors->first('monthly_salary') }}</p>@endif
+                </div>
+            </div>
             <div>
                 <label for="member_password" class="mb-1 block text-sm font-medium text-slate-700">Password</label>
                 <input id="member_password" name="password" type="password" required minlength="8" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-800 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200">
@@ -120,4 +140,6 @@
         modal.addEventListener('click', (e) => { if (e.target === modal) hide(); });
     })();
 </script>
+
+@include('payments._add-payment-modal', ['paymentMembers' => $members])
 @endsection
