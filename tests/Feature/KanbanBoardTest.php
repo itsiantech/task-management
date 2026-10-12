@@ -92,8 +92,12 @@ class KanbanBoardTest extends TestCase
 
         $this->actingAs($viewer)->get("/boards/{$board->id}")->assertOk();
         $this->actingAs($viewer)->putJson("/boards/{$board->id}/cards/{$card->id}", ['title' => 'Hacked'])->assertForbidden();
+        // Viewers may move cards (drag & drop) but not reorder lists or share.
         $this->actingAs($viewer)->postJson('/kanban/update-position', [
             'board_id' => $board->id, 'columns' => [['id' => $column->id, 'cards' => [$card->id]]],
+        ])->assertOk();
+        $this->actingAs($viewer)->postJson('/kanban/update-position', [
+            'board_id' => $board->id, 'column_order' => [$column->id],
         ])->assertForbidden();
         $this->actingAs($viewer)->post("/boards/{$board->id}/share", ['user_ids' => []])->assertForbidden();
 

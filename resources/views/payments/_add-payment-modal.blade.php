@@ -12,7 +12,7 @@
         <form action="{{ route('admin.payments.store') }}" method="POST" class="space-y-4">
             @csrf
             <div>
-                <label for="payment_user" class="mb-1 block text-sm font-medium text-slate-700">Member</label>
+                <label for="payment_user" class="mb-1 block text-sm font-medium text-slate-700">Team Member</label>
                 <select id="payment_user" name="user_id" required class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-800 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200">
                     @foreach ($paymentMembers as $paymentMember)
                         <option value="{{ $paymentMember->id }}" @selected((string) old('user_id', $paymentPresetId) === (string) $paymentMember->id)>

@@ -32,17 +32,21 @@
 @section('content')
 @php
     $statusClasses = [
+        'pending' => 'bg-amber-100 text-amber-700',
         'not_started' => 'bg-slate-100 text-slate-700',
         'in_progress' => 'bg-sky-100 text-sky-700',
         'testing' => 'bg-violet-100 text-violet-700',
         'awaiting_feedback' => 'bg-amber-100 text-amber-700',
+        'hold' => 'bg-orange-100 text-orange-700',
         'completed' => 'bg-emerald-100 text-emerald-700',
     ];
     $statusLabels = [
+        'pending' => 'Pending',
         'not_started' => 'Not Started',
         'in_progress' => 'In Progress',
         'testing' => 'Testing',
         'awaiting_feedback' => 'Awaiting Feedback',
+        'hold' => 'Hold',
         'completed' => 'Completed',
     ];
     $priorityClasses = [
@@ -85,6 +89,9 @@
     <div class="mb-6 flex items-center justify-between">
         <div class="flex items-center gap-3">
             <a href="{{ route('tasks.index') }}" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">← Back to tasks</a>
+            @if(auth()->user()?->isAdmin() || auth()->user()?->isAccountant())
+                <a href="{{ route('accounts.orders.invoices', $task) }}" class="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-700 hover:bg-violet-100">🧾 Invoices ({{ $task->invoices()->count() }})</a>
+            @endif
             <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-600">Task Details</p>
                 <h1 class="text-3xl font-bold text-slate-900">{{ $task->title }}</h1>
@@ -205,7 +212,7 @@
                             </div>
                         </div>
                     @empty
-                        <p id="noCorrectionsMsg" class="rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">No corrections yet. Members can submit date-wise corrections above.</p>
+                        <p id="noCorrectionsMsg" class="rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">No corrections yet. Team members can submit date-wise corrections above.</p>
                     @endforelse
                 </div>
             </div>
@@ -421,7 +428,7 @@
                         const empty = document.createElement('p');
                         empty.id = 'noCorrectionsMsg';
                         empty.className = 'rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500';
-                        empty.textContent = 'No corrections yet. Members can submit date-wise corrections above.';
+                        empty.textContent = 'No corrections yet. Team members can submit date-wise corrections above.';
                         document.getElementById('correctionsList').appendChild(empty);
                     }
                 }).catch(function () {

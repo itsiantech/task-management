@@ -25,7 +25,7 @@ class StickyNoteTaskTest extends TestCase
             'sticky_note' => 'DB user: admin / pass: password123',
         ]);
 
-        $response->assertRedirect('/tasks');
+        $response->assertRedirect('/tasks?status=pending&view=table');
 
         $task = Task::first();
 
@@ -33,7 +33,7 @@ class StickyNoteTaskTest extends TestCase
         $this->assertSame('DB user: admin / pass: password123', $task->sticky_note);
 
         $this->actingAs($admin)
-            ->get('/tasks')
+            ->get('/tasks?status=pending')
             ->assertOk()
             ->assertSee('DB user: admin / pass: password123');
     }

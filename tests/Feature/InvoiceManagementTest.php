@@ -43,17 +43,20 @@ class InvoiceManagementTest extends TestCase
         ]);
 
         $response->assertRedirect();
+        $invoice = \App\Models\Invoice::first();
+        // Invoice numbers are auto-generated (INV-YYYY-NNNN) and the status
+        // is recalculated from payments (300 paid of 1250 due => partial).
+        $this->assertStringStartsWith('INV-', $invoice->invoice_number);
         $this->assertDatabaseHas('invoices', [
             'client_id' => $client->id,
-            'invoice_number' => 1,
-            'status' => 'Draft',
+            'invoice_number' => $invoice->invoice_number,
+            'status' => 'partial',
         ]);
 
         $this->assertDatabaseHas('invoice_items', [
             'description' => 'Website design',
         ]);
 
-        $invoice = \App\Models\Invoice::first();
         $this->assertSame(1500.0, (float) $invoice->sub_total);
         $this->assertSame(1250.0, (float) $invoice->total_amount);
         $this->assertSame(950.0, (float) $invoice->total_due);

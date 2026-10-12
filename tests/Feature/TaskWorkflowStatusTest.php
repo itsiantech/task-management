@@ -33,7 +33,7 @@ class TaskWorkflowStatusTest extends TestCase
                 'tags' => ['Bug', 'UI/UX'],
                 'priority' => 'high',
             ])
-            ->assertRedirect('/tasks');
+            ->assertRedirect('/tasks?status=testing&view=table');
 
         $this->actingAs($admin)
             ->get('/tasks?status=testing')

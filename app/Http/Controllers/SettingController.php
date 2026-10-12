@@ -17,6 +17,12 @@ class SettingController extends Controller
             'user' => Auth::user(),
             'siteTitle' => Setting::get('site_title', Setting::DEFAULTS['site_title']),
             'adminLogo' => Setting::logoUrl(),
+            'company' => [
+                'name' => Setting::get('company_name', ''),
+                'address' => Setting::get('company_address', ''),
+                'phone' => Setting::get('company_phone', ''),
+                'email' => Setting::get('company_email', ''),
+            ],
         ]);
     }
 
@@ -26,9 +32,17 @@ class SettingController extends Controller
             'site_title' => ['required', 'string', 'max:100'],
             'admin_logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:2048'],
             'remove_logo' => ['nullable', 'boolean'],
+            'company_name' => ['nullable', 'string', 'max:255'],
+            'company_address' => ['nullable', 'string', 'max:1000'],
+            'company_phone' => ['nullable', 'string', 'max:50'],
+            'company_email' => ['nullable', 'email', 'max:255'],
         ]);
 
         Setting::set('site_title', trim($validated['site_title']));
+        Setting::set('company_name', trim((string) ($validated['company_name'] ?? '')));
+        Setting::set('company_address', trim((string) ($validated['company_address'] ?? '')));
+        Setting::set('company_phone', trim((string) ($validated['company_phone'] ?? '')));
+        Setting::set('company_email', trim((string) ($validated['company_email'] ?? '')));
 
         if ($request->hasFile('admin_logo')) {
             $this->deleteLogo();

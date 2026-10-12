@@ -9,7 +9,7 @@
             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-violet-600">Notices</p>
             <h1 class="text-3xl font-bold text-slate-900">Announcements</h1>
         </div>
-        <a href="{{ route('admin.members') }}" class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">← Member Directory</a>
+        <a href="{{ route('admin.members') }}" class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">← Team Member Directory</a>
     </div>
 
     <div class="mb-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

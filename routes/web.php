@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminApprovalController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\CloudVaultController;
 use App\Http\Controllers\IntegrationSettingsController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\GoogleLoginController;
@@ -54,6 +55,7 @@ Route::middleware(['auth', 'approved'])->group(function () {
     Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
     Route::get('/tasks/{task}', [TaskController::class, 'show'])->name('tasks.show');
     Route::put('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
+    Route::patch('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.status');
     Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
     Route::get('/tasks/{task}/download', [TaskController::class, 'downloadAttachment'])->name('tasks.download');
     Route::post('/tasks/{task}/upload', [TaskController::class, 'uploadAttachment'])->name('tasks.upload');
@@ -105,8 +107,7 @@ Route::middleware(['auth', 'approved'])->group(function () {
     Route::post('/social-chat/{conversation}/reply', [SocialChatController::class, 'reply'])->name('social-chat.reply');
 
     // Kanban boards (access is enforced per board by BoardPolicy)
-    Route::get('/boards', [KanbanBoardController::class, 'index'])->name('boards.index');
-    Route::post('/boards', [KanbanBoardController::class, 'store'])->name('boards.store');
+    Route::get('/boards', [KanbanBoardController::class, 'index'])->name('boards.index');    Route::post('/boards', [KanbanBoardController::class, 'store'])->name('boards.store');
     Route::post('/kanban/update-position', [KanbanBoardController::class, 'updatePosition'])->name('kanban.update-position');
 
     Route::scopeBindings()->group(function () {
@@ -125,7 +126,43 @@ Route::middleware(['auth', 'approved'])->group(function () {
         Route::put('/boards/{board}/cards/{card}', [KanbanBoardController::class, 'updateCard'])->name('boards.cards.update');
         Route::delete('/boards/{board}/cards/{card}', [KanbanBoardController::class, 'destroyCard'])->name('boards.cards.destroy');
     });
+
+    // CloudVault Sheets (every approved team member; per-sheet roles enforced by policy + API).
+    // Catch-all so /cloudvault, /cloudvault/ and any subpath hit auth first
+    // (the build dir has no index.html that a webserver could serve directly).
+    Route::get('/cloudvault/{any?}', [CloudVaultController::class, 'index'])
+        ->where('any', '.*')
+        ->name('cloudvault');
+
+    // CloudVault JSON API (same-origin session auth; the React app talks here).
+    Route::middleware(['auth', 'approved'])->prefix('api/cloudvault')->name('api.cloudvault.')->group(function () {
+        $api = \App\Http\Controllers\Api\CloudVaultController::class;
+        Route::get('/sheets', [$api, 'index'])->name('sheets.index');
+        Route::post('/sheets', [$api, 'store'])->name('sheets.store');
+        Route::get('/sheets/{sheet}', [$api, 'show'])->name('sheets.show');
+        Route::put('/sheets/{sheet}', [$api, 'update'])->name('sheets.update');
+        Route::delete('/sheets/{sheet}', [$api, 'destroy'])->name('sheets.destroy');
+        Route::post('/sheets/{sheet}/duplicate', [$api, 'duplicate'])->name('sheets.duplicate');
+        Route::get('/sheets/{sheet}/rows', [$api, 'rows'])->name('sheets.rows');
+        Route::post('/sheets/{sheet}/columns', [$api, 'storeColumn'])->name('columns.store');
+        Route::put('/sheets/{sheet}/columns/{column}', [$api, 'updateColumn'])->name('columns.update');
+        Route::delete('/sheets/{sheet}/columns/{column}', [$api, 'destroyColumn'])->name('columns.destroy');
+        Route::post('/sheets/{sheet}/rows', [$api, 'storeRow'])->name('rows.store');
+        Route::put('/sheets/{sheet}/rows/{row}', [$api, 'updateRow'])->name('rows.update');
+        Route::patch('/sheets/{sheet}/rows/{row}/cell', [$api, 'updateCell'])->name('rows.cell');
+        Route::delete('/sheets/{sheet}/rows/{row}', [$api, 'destroyRow'])->name('rows.destroy');
+        Route::post('/sheets/{sheet}/shares', [$api, 'storeShare'])->name('shares.store');
+        Route::delete('/sheets/{sheet}/shares/{email}', [$api, 'destroyShare'])->where('email', '.*')->name('shares.destroy');
+        Route::get('/sheets/{sheet}/row-shares', [$api, 'rowShares'])->name('row-shares.index');
+        Route::post('/sheets/{sheet}/row-shares', [$api, 'storeRowShare'])->name('row-shares.store');
+        Route::delete('/sheets/{sheet}/row-shares/{token}', [$api, 'destroyRowShare'])->name('row-shares.destroy');
+        Route::get('/members', [$api, 'members'])->name('members');
+    });
 });
+
+// Public single-row share (token-gated, no login).
+Route::get('/api/cloudvault/shared-row/{token}', [\App\Http\Controllers\Api\CloudVaultController::class, 'sharedRow'])
+    ->name('api.cloudvault.shared-row');
 
 /*
 |--------------------------------------------------------------------------
@@ -152,6 +189,7 @@ Route::middleware(['auth', 'approved', 'admin'])->group(function () {
 
     // Clients
     Route::get('/clients', [ClientController::class, 'index'])->name('clients.index');
+    Route::get('/clients/search', [ClientController::class, 'search'])->name('clients.search');
     Route::post('/clients', [ClientController::class, 'store'])->name('clients.store');
     Route::post('/clients/bulk-assign', [ClientController::class, 'bulkAssign'])->name('clients.bulkAssign');
     Route::get('/clients/template', [ClientController::class, 'downloadTemplate'])->name('clients.template');

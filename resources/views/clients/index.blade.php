@@ -76,9 +76,9 @@
                             <input type="checkbox" id="selectAll" aria-label="Select all clients">
                         </th>
                         <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Client</th>
+                        <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Contact Person</th>
                         <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Phone</th>
                         <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Email</th>
-                        <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Address</th>
                         <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
                         <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Actions</th>
                     </tr>
@@ -95,9 +95,9 @@
                                     <p class="text-xs text-slate-500">ID #{{ $client->id }}</p>
                                 </div>
                             </td>
+                            <td class="px-4 py-4 text-sm text-slate-700">{{ $client->contact_person ?? '—' }}</td>
                             <td class="px-4 py-4 text-sm text-slate-700">{{ $client->phone }}</td>
                             <td class="px-4 py-4 text-sm text-slate-700">{{ $client->email ?? '—' }}</td>
-                            <td class="px-4 py-4 text-sm text-slate-700">{{ $client->address ?? '—' }}</td>
                             <td class="px-4 py-4">
                                 @php
                                     $statusClass = [
@@ -151,7 +151,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-4 py-12 text-center text-slate-500">
+                            <td colspan="6" class="px-4 py-12 text-center text-slate-500">
                                 No clients found yet.
                             </td>
                         </tr>
@@ -179,8 +179,13 @@
             @csrf
 
             <div>
-                <label for="client_name" class="mb-1 block text-sm font-medium text-slate-700">Name</label>
-                <input id="client_name" name="name" type="text" required class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" placeholder="Client name">
+                <label for="client_name" class="mb-1 block text-sm font-medium text-slate-700">Company Name</label>
+                <input id="client_name" name="name" type="text" required class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" placeholder="Company name">
+            </div>
+
+            <div>
+                <label for="client_contact_person" class="mb-1 block text-sm font-medium text-slate-700">Contact Person</label>
+                <input id="client_contact_person" name="contact_person" type="text" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" placeholder="Contact person name">
             </div>
 
             <div class="grid gap-4 md:grid-cols-2">
@@ -196,7 +201,12 @@
 
             <div>
                 <label for="client_address" class="mb-1 block text-sm font-medium text-slate-700">Address</label>
-                <textarea id="client_address" name="address" rows="3" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" placeholder="Street, city, country"></textarea>
+                <textarea id="client_address" name="address" rows="2" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" placeholder="Street, city, country"></textarea>
+            </div>
+
+            <div>
+                <label for="client_notes" class="mb-1 block text-sm font-medium text-slate-700">Notes</label>
+                <textarea id="client_notes" name="notes" rows="2" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" placeholder="Company notes, preferences, etc."></textarea>
             </div>
 
             <div>
@@ -364,8 +374,12 @@
 
                         <dl class="space-y-3 text-sm">
                             <div>
-                                <dt class="text-slate-500">Name</dt>
+                                <dt class="text-slate-500">Company Name</dt>
                                 <dd id="modalClientName" class="font-medium text-slate-800"></dd>
+                            </div>
+                            <div>
+                                <dt class="text-slate-500">Contact Person</dt>
+                                <dd id="modalClientContactPerson" class="font-medium text-slate-800"></dd>
                             </div>
                             <div>
                                 <dt class="text-slate-500">Phone</dt>
@@ -378,6 +392,10 @@
                             <div>
                                 <dt class="text-slate-500">Address</dt>
                                 <dd id="modalClientAddress" class="font-medium text-slate-800"></dd>
+                            </div>
+                            <div>
+                                <dt class="text-slate-500">Notes</dt>
+                                <dd id="modalClientNotes" class="font-medium text-slate-800"></dd>
                             </div>
                         </dl>
 
@@ -519,9 +537,11 @@
 
                 document.getElementById('clientModalTitle').textContent = client.name;
                 document.getElementById('modalClientName').textContent = client.name;
+                document.getElementById('modalClientContactPerson').textContent = client.contact_person || '—';
                 document.getElementById('modalClientPhone').textContent = client.phone;
                 document.getElementById('modalClientEmail').textContent = client.email || '—';
                 document.getElementById('modalClientAddress').textContent = client.address || '—';
+                document.getElementById('modalClientNotes').textContent = client.notes || '—';
 
                 const statusInfo = formatStatus(client.status);
                 const statusBadge = document.getElementById('clientStatusBadge');

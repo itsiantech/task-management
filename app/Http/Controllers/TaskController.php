@@ -21,11 +21,18 @@ class TaskController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
-        $selectedStatus = $request->query('status', 'all');
-        $validStatuses = ['all', 'not_started', 'in_progress', 'testing', 'awaiting_feedback', 'completed'];
+        // First page shows running work: In Progress is the default tab,
+        // so completed tasks stay out of the landing view.
+        $selectedStatus = $request->query('status', 'in_progress');
+        $validStatuses = ['all', 'pending', 'not_started', 'in_progress', 'testing', 'awaiting_feedback', 'hold', 'completed'];
+        $view = $request->query('view', 'table');
 
         if (! in_array($selectedStatus, $validStatuses, true)) {
             $selectedStatus = 'all';
+        }
+
+        if (! in_array($view, ['table', 'board'], true)) {
+            $view = 'table';
         }
 
         $hasTaskMembersTable = Schema::hasTable('task_user');
@@ -45,16 +52,18 @@ class TaskController extends Controller
 
         $allTasks = $query->orderBy('due_date')->orderBy('created_at', 'desc')->get();
 
-        $tasks = $selectedStatus === 'all'
+        $tasks = ($selectedStatus === 'all' || $view === 'board')
             ? $allTasks
             : $allTasks->filter(fn ($task) => $task->status === $selectedStatus)->values();
 
         $taskCounts = [
             'all' => $allTasks->count(),
+            'pending' => $allTasks->where('status', 'pending')->count(),
             'not_started' => $allTasks->where('status', 'not_started')->count(),
             'in_progress' => $allTasks->where('status', 'in_progress')->count(),
             'testing' => $allTasks->where('status', 'testing')->count(),
             'awaiting_feedback' => $allTasks->where('status', 'awaiting_feedback')->count(),
+            'hold' => $allTasks->where('status', 'hold')->count(),
             'completed' => $allTasks->where('status', 'completed')->count(),
         ];
 
@@ -90,7 +99,29 @@ class TaskController extends Controller
                 return $announcement;
             });
 
-        return view('tasks.index', compact('tasks', 'approvedMembers', 'pendingUsers', 'budgetSummary', 'hasTaskMembersTable', 'selectedStatus', 'taskCounts', 'dashboardAnnouncements'));
+        return view('tasks.index', compact('tasks', 'approvedMembers', 'pendingUsers', 'budgetSummary', 'hasTaskMembersTable', 'selectedStatus', 'taskCounts', 'dashboardAnnouncements', 'view'));
+    }
+
+    /**
+     * Quick status change from the task board (Pending / Hold / Complete).
+     * The card moves to the matching column on reload.
+     */
+    public function updateStatus(Request $request, Task $task)
+    {
+        $user = Auth::user();
+        $hasTaskMembersTable = Schema::hasTable('task_user');
+
+        if (! $user->isAdmin() && $task->assigned_to !== $user->id && ! ($hasTaskMembersTable && $task->members()->where('users.id', $user->id)->exists())) {
+            abort(403, 'You are not allowed to update this task.');
+        }
+
+        $validated = $request->validate([
+            'status' => ['required', Rule::in(['pending', 'hold', 'completed'])],
+        ]);
+
+        $task->update(['status' => $validated['status']]);
+
+        return back()->with('success', 'Task moved to ' . ucfirst($validated['status']) . '.');
     }
 
     public function show(Task $task)
@@ -200,7 +231,7 @@ class TaskController extends Controller
         };
         $task->saveQuietly();
 
-        return redirect()->route('tasks.index')->with('success', 'Task created successfully.');
+        return redirect()->route('tasks.index', ['status' => $task->status, 'view' => 'table'])->with('success', 'Task created successfully.');
     }
 
     /**
@@ -294,18 +325,18 @@ class TaskController extends Controller
 
         $task->save();
 
-        return redirect()->route('tasks.index')->with('success', 'Task updated successfully.');
+        return redirect()->route('tasks.index', ['status' => $task->status, 'view' => 'table'])->with('success', 'Task updated successfully.');
     }
 
     private function normalizeStatus(?string $status): string
     {
         $status = strtolower((string) ($status ?? 'not_started'));
 
+        // Pending and Hold are first-class statuses (shown as their own
+        // board columns); only legacy aliases are mapped away.
         return match ($status) {
-            'pending' => 'not_started',
-            'hold' => 'awaiting_feedback',
             'cancelled' => 'completed',
-            default => in_array($status, ['not_started', 'in_progress', 'testing', 'awaiting_feedback', 'completed'], true) ? $status : 'not_started',
+            default => in_array($status, ['pending', 'not_started', 'in_progress', 'testing', 'awaiting_feedback', 'hold', 'completed'], true) ? $status : 'not_started',
         };
     }
 

@@ -15,6 +15,14 @@ class TaskCommentController extends Controller
     {
         $this->authorizeTaskAccess($task);
 
+        // Opening the chat marks the other side's messages as seen.
+        if (Schema::hasColumn('task_comments', 'read_at')) {
+            $task->comments()
+                ->where('user_id', '!=', Auth::id())
+                ->whereNull('read_at')
+                ->update(['read_at' => now()]);
+        }
+
         $comments = $task->comments()->with('user')->latest()->get()->map(function ($comment) {
             $path = $this->resolveAttachmentPath($comment);
 
@@ -29,7 +37,10 @@ class TaskCommentController extends Controller
                     'id' => $comment->user->id,
                     'name' => $comment->user->name,
                 ],
+                'is_admin' => (bool) $comment->user?->isAdmin(),
                 'is_owner' => Auth::id() === $comment->user_id || Auth::user()->isAdmin(),
+                'is_mine' => Auth::id() === $comment->user_id,
+                'read_at' => $comment->read_at?->format('Y-m-d H:i:s'),
                 'created_at' => $comment->created_at->format('Y-m-d H:i:s'),
             ];
         });
@@ -113,6 +124,10 @@ class TaskCommentController extends Controller
     {
         $this->authorizeTaskAccess($task);
 
+        if ($comment->task_id !== $task->id) {
+            abort(404);
+        }
+
         if (! Auth::user()->isAdmin() && Auth::id() !== $comment->user_id) {
             abort(403, 'You can only edit your own comments.');
         }
@@ -185,10 +200,11 @@ class TaskCommentController extends Controller
     {
         $this->authorizeTaskAccess($task);
 
-        if (! Auth::user()->isAdmin() && Auth::id() !== $comment->user_id) {
-            abort(403, 'You can only delete your own comments.');
+        if ($comment->task_id !== $task->id) {
+            abort(404);
         }
 
+        // Both sides (admin and assigned team member) may delete messages.
         $attachmentPath = $this->resolveAttachmentPath($comment);
 
         if ($attachmentPath && Storage::disk('public')->exists($attachmentPath)) {
@@ -226,7 +242,10 @@ class TaskCommentController extends Controller
                 'id' => $comment->user->id,
                 'name' => $comment->user->name,
             ],
+            'is_admin' => (bool) $comment->user?->isAdmin(),
             'is_owner' => Auth::id() === $comment->user_id || Auth::user()->isAdmin(),
+            'is_mine' => Auth::id() === $comment->user_id,
+            'read_at' => $comment->read_at?->format('Y-m-d H:i:s'),
             'created_at' => $comment->created_at->format('Y-m-d H:i:s'),
         ];
     }

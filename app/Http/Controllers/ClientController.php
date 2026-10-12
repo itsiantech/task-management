@@ -46,30 +46,44 @@ class ClientController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'contact_person' => ['nullable', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
             'address' => ['nullable', 'string'],
             'status' => ['nullable', Rule::in(['pending', 'confirm', 'reject'])],
+            'notes' => ['nullable', 'string'],
         ]);
 
         Client::create($validated + ['status' => $validated['status'] ?? 'pending']);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'client' => Client::latest()->first(),
+            ]);
+        }
 
         return redirect()->route('clients.index')->with('success', 'Client created successfully.');
     }
 
     public function show(Client $client)
     {
-        $client->load('notes.user');
+        $client->load('notes.user', 'invoices', 'payments', 'tasks');
 
         return response()->json([
             'client' => [
                 'id' => $client->id,
                 'name' => $client->name,
+                'contact_person' => $client->contact_person,
                 'phone' => $client->phone,
                 'email' => $client->email,
                 'address' => $client->address,
                 'status' => $client->status,
                 'status_label' => $this->statusLabel($client->status),
+                'notes' => $client->notes,
+                'total_paid' => $client->total_paid,
+                'total_due' => $client->total_due,
+                'pending_invoices_count' => $client->pending_invoices_count,
             ],
             'notes' => $client->notes->map(function (ClientNote $note) {
                 return [
@@ -82,6 +96,24 @@ class ClientController extends Controller
                     ],
                 ];
             })->values(),
+            'invoices' => $client->invoices->map(function ($invoice) {
+                return [
+                    'id' => $invoice->id,
+                    'invoice_number' => $invoice->invoice_number,
+                    'total_amount' => $invoice->total_amount,
+                    'total_due' => $invoice->total_due,
+                    'status' => $invoice->status,
+                    'invoice_date' => $invoice->invoice_date->format('M d, Y'),
+                ];
+            }),
+            'payments' => $client->payments->map(function ($payment) {
+                return [
+                    'id' => $payment->id,
+                    'amount' => $payment->amount,
+                    'payment_date' => $payment->payment_date->format('M d, Y'),
+                    'method' => $payment->method,
+                ];
+            }),
         ]);
     }
 
@@ -89,10 +121,12 @@ class ClientController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'contact_person' => ['nullable', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
             'address' => ['nullable', 'string'],
             'status' => ['nullable', Rule::in(['pending', 'confirm', 'reject'])],
+            'notes' => ['nullable', 'string'],
         ]);
 
         $client->update($validated + ['status' => $validated['status'] ?? $client->status]);
@@ -461,5 +495,39 @@ CSV;
             'reject' => 'Rejected',
             default => 'Pending',
         };
+    }
+
+    public function search(Request $request)
+    {
+        $search = trim((string) $request->input('q', ''));
+
+        if (strlen($search) < 2) {
+            return response()->json(['results' => []]);
+        }
+
+        $clients = Client::query()
+            ->where('status', 'confirm')
+            ->where(function ($query) use ($search) {
+                $query->where('name', 'like', "%{$search}%")
+                    ->orWhere('contact_person', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            })
+            ->orderBy('name')
+            ->limit(20)
+            ->get(['id', 'name', 'contact_person', 'phone', 'email']);
+
+        return response()->json([
+            'results' => $clients->map(function ($client) {
+                return [
+                    'id' => $client->id,
+                    'text' => $client->name . ($client->contact_person ? " ({$client->contact_person})" : '') . " - {$client->phone}",
+                    'name' => $client->name,
+                    'contact_person' => $client->contact_person,
+                    'phone' => $client->phone,
+                    'email' => $client->email,
+                ];
+            }),
+        ]);
     }
 }

@@ -15,14 +15,14 @@
                 <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </a>
             <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-sky-600">Member Profile</p>
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-sky-600">Team Member Profile</p>
                 <h1 class="flex flex-wrap items-center gap-2 text-2xl font-bold text-slate-900">
                     {{ $user->name }}
                     @if ($user->member_code)
                         <span class="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-700">{{ $user->member_code }}</span>
                     @endif
                 </h1>
-                <p class="text-sm text-slate-500">{{ $user->email }} · {{ ucfirst($user->role) }}</p>
+                <p class="text-sm text-slate-500">{{ $user->email }} · {{ $user->role === 'member' ? 'Team Member' : ucfirst($user->role) }}</p>
             </div>
         </div>
         <div class="flex flex-wrap items-center gap-2">
@@ -103,6 +103,54 @@
     </div>
 
     <div class="mb-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h2 class="text-xl font-semibold text-slate-900">Assigned Tasks ({{ $assignedTasks->total() }})</h2>
+        </div>
+        <div class="mb-4 flex flex-wrap gap-2">
+            @foreach (\App\Models\Task::statusLabels() as $value => $label)
+                @if (($taskStatusCounts[$value] ?? 0) > 0)
+                    <span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ \App\Models\Task::statusColors()[$value] ?? 'bg-slate-100 text-slate-700' }}">{{ $label }}: {{ $taskStatusCounts[$value] }}</span>
+                @endif
+            @endforeach
+            @if (empty($taskStatusCounts))
+                <span class="text-sm text-slate-500">No tasks assigned yet.</span>
+            @endif
+        </div>
+        <div class="overflow-hidden rounded-xl border border-slate-200">
+            <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Task</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Due Date</th>
+                        <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 bg-white">
+                    @forelse ($assignedTasks as $task)
+                        <tr>
+                            <td class="px-4 py-3">
+                                <p class="text-sm font-medium text-slate-900">{{ $task->title }}</p>
+                                <p class="text-xs text-slate-500">{{ $task->order_number_label }}</p>
+                            </td>
+                            <td class="px-4 py-3"><span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ \App\Models\Task::statusColors()[$task->status] ?? 'bg-slate-100 text-slate-700' }}">{{ \App\Models\Task::statusLabels()[$task->status] ?? ucfirst($task->status) }}</span></td>
+                            <td class="px-4 py-3 text-sm text-slate-700">{{ $task->due_date ? $task->due_date->format('M d, Y') : '—' }}</td>
+                            <td class="px-4 py-3 text-right"><a href="{{ route('tasks.show', $task) }}" class="rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100">Open</a></td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="4" class="px-4 py-6 text-center text-sm text-slate-500">No tasks assigned yet.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        @if ($assignedTasks->hasPages())
+            <div class="mt-4">{{ $assignedTasks->links() }}</div>
+        @endif
+    </div>
+
+    <div class="mb-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div class="mb-4">
             <h2 class="text-xl font-semibold text-slate-900">Month-by-month summary</h2>
         </div>
@@ -166,6 +214,9 @@
                 </tbody>
             </table>
         </div>
+        @if ($payments->hasPages())
+            <div class="mt-4">{{ $payments->links() }}</div>
+        @endif
     </div>
 
     <div class="rounded-2xl border border-violet-200 bg-white p-5 shadow-sm">
@@ -198,7 +249,7 @@
 <div id="editMemberModal" class="fixed inset-0 z-50 {{ $editOpen }} items-center justify-center bg-slate-900/50 p-4">
     <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
         <div class="mb-4 flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-slate-900">Edit Member</h2>
+            <h2 class="text-lg font-semibold text-slate-900">Edit Team Member</h2>
             <button type="button" data-close-edit class="text-2xl leading-none text-slate-400 hover:text-slate-600" aria-label="Close">&times;</button>
         </div>
 
@@ -221,7 +272,7 @@
                 <div>
                     <label for="edit_role" class="mb-1 block text-sm font-medium text-slate-700">Role</label>
                     <select id="edit_role" name="role" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-800 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200">
-                        <option value="member" @selected(old('role', $user->role) === 'member')>Member</option>
+                        <option value="member" @selected(old('role', $user->role) === 'member')>Team Member</option>
                         <option value="admin" @selected(old('role') === 'admin')>Admin</option>
                     </select>
                     @if ($editErrors->has('role'))<p class="mt-1 text-xs text-rose-600">{{ $editErrors->first('role') }}</p>@endif

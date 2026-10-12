@@ -76,6 +76,29 @@
                 @endif
             </div>
 
+            <div class="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+                <h3 class="mb-1 text-sm font-semibold text-slate-900">Company details for invoices</h3>
+                <p class="mb-4 text-xs text-slate-500">Shown automatically in the invoice header (print & PDF) along with your logo.</p>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div class="sm:col-span-2">
+                        <label for="company_name" class="mb-1 block text-sm font-medium text-slate-700">Company name</label>
+                        <input id="company_name" name="company_name" type="text" maxlength="255" value="{{ old('company_name', $company['name']) }}" class="{{ $inputClass }}">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label for="company_address" class="mb-1 block text-sm font-medium text-slate-700">Address</label>
+                        <input id="company_address" name="company_address" type="text" maxlength="1000" value="{{ old('company_address', $company['address']) }}" class="{{ $inputClass }}">
+                    </div>
+                    <div>
+                        <label for="company_phone" class="mb-1 block text-sm font-medium text-slate-700">Phone</label>
+                        <input id="company_phone" name="company_phone" type="text" maxlength="50" value="{{ old('company_phone', $company['phone']) }}" class="{{ $inputClass }}">
+                    </div>
+                    <div>
+                        <label for="company_email" class="mb-1 block text-sm font-medium text-slate-700">Email</label>
+                        <input id="company_email" name="company_email" type="email" maxlength="255" value="{{ old('company_email', $company['email']) }}" class="{{ $inputClass }}">
+                    </div>
+                </div>
+            </div>
+
             <div class="flex justify-end">
                 <button type="submit" class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500">Save General Settings</button>
             </div>

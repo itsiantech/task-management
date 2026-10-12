@@ -23,6 +23,12 @@ class BoardPolicy
         return true;
     }
 
+    /** Move cards between lists (everyone who can see the board). */
+    public function move(User $user, Board $board): bool
+    {
+        return $board->roleFor($user) !== null;
+    }
+
     /** Add / edit / move / delete columns and cards. */
     public function contribute(User $user, Board $board): bool
     {

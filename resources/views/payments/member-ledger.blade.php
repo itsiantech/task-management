@@ -13,7 +13,7 @@
             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600">Ledger</p>
             <h1 class="text-3xl font-bold text-slate-900">{{ $selectedUser->name }}'s Payments</h1>
             @if ($selectedUser->member_code)
-                <p class="mt-1 text-sm text-slate-500">Member ID: <span class="font-semibold text-slate-700">{{ $selectedUser->member_code }}</span></p>
+                <p class="mt-1 text-sm text-slate-500">Team Member ID: <span class="font-semibold text-slate-700">{{ $selectedUser->member_code }}</span></p>
             @endif
         </div>
         @if ($isAdmin)
@@ -27,15 +27,29 @@
                 <label for="month_year" class="mb-1 block text-sm font-medium text-slate-700">Month</label>
                 <select id="month_year" name="month_year" class="rounded-lg border border-slate-300 px-3 py-2.5 text-slate-800 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200">
                     @foreach ($paymentMonths as $paymentMonth)
-                        <option value="{{ $paymentMonth }}" @selected($monthYear === $paymentMonth)>{{ \Illuminate\Support\Carbon::createFromFormat('Y-m', $paymentMonth)->format('F Y') }}</option>
+                        <option value="{{ $paymentMonth }}" @selected($monthYear === $paymentMonth && !$dateFiltered)>{{ \Illuminate\Support\Carbon::createFromFormat('Y-m', $paymentMonth)->format('F Y') }}</option>
                     @endforeach
-                    <option value="all" @selected($showAllMonths)>All months</option>
+                    <option value="all" @selected($showAllMonths && !$dateFiltered)>All months</option>
                 </select>
+            </div>
+            <div>
+                <label for="from" class="mb-1 block text-sm font-medium text-slate-700">From date</label>
+                <input id="from" type="date" name="from" value="{{ $from }}" class="rounded-lg border border-slate-300 px-3 py-2.5 text-slate-800 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200">
+            </div>
+            <div>
+                <label for="to" class="mb-1 block text-sm font-medium text-slate-700">To date</label>
+                <input id="to" type="date" name="to" value="{{ $to }}" class="rounded-lg border border-slate-300 px-3 py-2.5 text-slate-800 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200">
             </div>
             <button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500">
                 Filter
             </button>
+            @if ($dateFiltered || $showAllMonths)
+                <a href="{{ url()->current() }}" class="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">Clear</a>
+            @endif
         </div>
+        @if ($dateFiltered)
+            <p class="mt-2 text-xs text-slate-500">Showing payments from {{ $from ?: '…' }} to {{ $to ?: '…' }} (date range overrides the month filter).</p>
+        @endif
     </form>
 
     <div class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -44,8 +58,8 @@
             <p class="mt-2 text-2xl font-bold text-amber-600">${{ number_format((float) $dueBalance, 2) }}</p>
         </div>
         <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p class="text-sm text-slate-500">{{ $showAllMonths ? 'All Payments' : 'Payments This Month' }}</p>
-            <p class="mt-2 text-2xl font-bold text-emerald-600">${{ number_format((float) $payments->sum('amount'), 2) }}</p>
+            <p class="text-sm text-slate-500">{{ $dateFiltered ? 'Payments in Range' : ($showAllMonths ? 'All Payments' : 'Payments This Month') }}</p>
+            <p class="mt-2 text-2xl font-bold text-emerald-600">${{ number_format((float) $paymentsTotal, 2) }}</p>
         </div>
         <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <p class="text-sm text-slate-500">Advance Balance</p>
@@ -121,12 +135,15 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-4 py-6 text-center text-sm text-slate-500">No payment entries found{{ $showAllMonths ? '' : ' for this month' }}.</td>
+                            <td colspan="6" class="px-4 py-6 text-center text-sm text-slate-500">No payment entries found{{ $dateFiltered ? ' in this date range' : ($showAllMonths ? '' : ' for this month') }}.</td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
+        @if ($payments->hasPages())
+            <div class="mt-4">{{ $payments->links() }}</div>
+        @endif
     </div>
 </div>
 

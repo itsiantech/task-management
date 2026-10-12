@@ -73,6 +73,65 @@
         </form>
     </div>
 
+    @if ($user->role === 'member')
+        <div class="mb-8 grid gap-4 sm:grid-cols-3">
+            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p class="text-sm text-slate-500">Monthly Salary</p>
+                <p class="mt-2 text-2xl font-bold text-slate-900">{{ $salaryStats['monthly_salary'] !== null ? '$' . number_format((float) $salaryStats['monthly_salary'], 2) : '—' }}</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p class="text-sm text-slate-500">Paid This Month</p>
+                <p class="mt-2 text-2xl font-bold text-emerald-600">${{ number_format((float) $salaryStats['this_month'], 2) }}</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p class="text-sm text-slate-500">All-time Received</p>
+                <p class="mt-2 text-2xl font-bold text-slate-900">${{ number_format((float) $salaryStats['all_time'], 2) }}</p>
+                <a href="{{ route('payments.member') }}" class="mt-1 inline-block text-xs font-medium text-sky-600 hover:text-sky-500">Full payment history →</a>
+            </div>
+        </div>
+
+        <div class="mb-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                    <h2 class="text-xl font-semibold text-slate-900">My Task History</h2>
+                    <p class="text-sm text-slate-500">Every task assigned to you so far ({{ $taskHistory->total() }}).</p>
+                </div>
+            </div>
+            <div class="overflow-hidden rounded-xl border border-slate-200">
+                <table class="min-w-full divide-y divide-slate-200">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Task</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Due Date</th>
+                            <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 bg-white">
+                        @forelse ($taskHistory as $task)
+                            <tr>
+                                <td class="px-4 py-3">
+                                    <p class="text-sm font-medium text-slate-900">{{ $task->title }}</p>
+                                    <p class="text-xs text-slate-500">{{ $task->order_number_label }}</p>
+                                </td>
+                                <td class="px-4 py-3"><span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ \App\Models\Task::statusColors()[$task->status] ?? 'bg-slate-100 text-slate-700' }}">{{ \App\Models\Task::statusLabels()[$task->status] ?? ucfirst($task->status) }}</span></td>
+                                <td class="px-4 py-3 text-sm text-slate-700">{{ $task->due_date ? $task->due_date->format('M d, Y') : '—' }}</td>
+                                <td class="px-4 py-3 text-right"><a href="{{ route('tasks.show', $task) }}" class="rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100">Open</a></td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4" class="px-4 py-6 text-center text-sm text-slate-500">No tasks assigned to you yet.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            @if ($taskHistory->hasPages())
+                <div class="mt-4">{{ $taskHistory->links() }}</div>
+            @endif
+        </div>
+    @endif
+
     <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div class="mb-4">
             <h2 class="text-xl font-semibold text-slate-900">Change password</h2>

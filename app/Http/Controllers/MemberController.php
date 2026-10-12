@@ -37,33 +37,54 @@ class MemberController extends Controller
 
     public function show(User $user)
     {
-        $payments = Payment::with('task')
-            ->where('user_id', $user->id)
-            ->orderByDesc('payment_date')
-            ->limit(20)
-            ->get();
+        $hasPaymentsTable = \Illuminate\Support\Facades\Schema::hasTable('payments');
 
-        $monthSummary = Payment::where('user_id', $user->id)
-            ->selectRaw("month_year,
-                SUM(amount) as total_paid,
-                SUM(CASE WHEN payment_type = 'salary' THEN amount ELSE 0 END) as salary_total,
-                SUM(CASE WHEN payment_type = 'advance' THEN amount ELSE 0 END) as advance_total,
-                SUM(CASE WHEN payment_type = 'adjustment' THEN amount ELSE 0 END) as adjustment_total")
-            ->groupBy('month_year')
-            ->orderByDesc('month_year')
-            ->get();
+        $payments = $hasPaymentsTable
+            ? Payment::with('task')
+                ->where('user_id', $user->id)
+                ->orderByDesc('payment_date')
+                ->paginate(10, ['*'], 'payments')
+            : new \Illuminate\Pagination\LengthAwarePaginator([], 0, 10, (int) request()->input('payments', 1), ['path' => request()->url(), 'pageName' => 'payments']);
 
-        $advanceBalance = round(
+        $monthSummary = $hasPaymentsTable
+            ? Payment::where('user_id', $user->id)
+                ->selectRaw("month_year,
+                    SUM(amount) as total_paid,
+                    SUM(CASE WHEN payment_type = 'salary' THEN amount ELSE 0 END) as salary_total,
+                    SUM(CASE WHEN payment_type = 'advance' THEN amount ELSE 0 END) as advance_total,
+                    SUM(CASE WHEN payment_type = 'adjustment' THEN amount ELSE 0 END) as adjustment_total")
+                ->groupBy('month_year')
+                ->orderByDesc('month_year')
+                ->get()
+            : collect();
+
+        $advanceBalance = $hasPaymentsTable ? round(
             (float) Payment::where('user_id', $user->id)->where('payment_type', 'advance')->sum('amount')
             - (float) Payment::where('user_id', $user->id)->where('payment_type', 'adjustment')->sum('amount'),
             2
-        );
+        ) : 0;
 
-        $thisMonthTotal = (float) Payment::where('user_id', $user->id)
+        $thisMonthTotal = $hasPaymentsTable ? (float) Payment::where('user_id', $user->id)
             ->where('month_year', now()->format('Y-m'))
-            ->sum('amount');
+            ->sum('amount') : 0;
 
-        return view('members.show', compact('user', 'payments', 'monthSummary', 'advanceBalance', 'thisMonthTotal'));
+        $assignedTasksQuery = \App\Models\Task::with(['assignee'])
+            ->where(function ($query) use ($user) {
+                $query->where('assigned_to', $user->id)
+                    ->orWhereHas('members', fn ($members) => $members->where('users.id', $user->id));
+            });
+
+        $taskStatusCounts = (clone $assignedTasksQuery)
+            ->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status')
+            ->all();
+
+        $assignedTasks = (clone $assignedTasksQuery)
+            ->orderByDesc('id')
+            ->paginate(10, ['*'], 'tasks');
+
+        return view('members.show', compact('user', 'payments', 'monthSummary', 'advanceBalance', 'thisMonthTotal', 'assignedTasks', 'taskStatusCounts'));
     }
 
     public function update(Request $request, User $user)
@@ -107,7 +128,7 @@ class MemberController extends Controller
 
         $user->save();
 
-        return redirect()->route('admin.members.show', $user)->with('success', 'Member updated successfully.');
+        return redirect()->route('admin.members.show', $user)->with('success', 'Team member updated successfully.');
     }
 
     public function resetPassword(Request $request, User $user)
@@ -128,7 +149,7 @@ class MemberController extends Controller
         }
 
         if ($user->role !== 'member') {
-            return redirect()->route('admin.members')->with('error', 'Only member accounts can be deleted here.');
+            return redirect()->route('admin.members')->with('error', 'Only team member accounts can be deleted here.');
         }
 
         foreach (['nid_path', 'cv_path'] as $column) {
@@ -139,6 +160,6 @@ class MemberController extends Controller
 
         $user->delete();
 
-        return redirect()->route('admin.members')->with('success', 'Member deleted successfully.');
+        return redirect()->route('admin.members')->with('success', 'Team member deleted successfully.');
     }
 }

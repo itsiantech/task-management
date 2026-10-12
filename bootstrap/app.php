@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureAdmin::class,
             'approved' => \App\Http\Middleware\EnsureUserApproved::class,
+            'accounts.manage' => \App\Http\Middleware\EnsureAccountsManager::class,
         ]);
 
         $middleware->validateCsrfTokens(except: [

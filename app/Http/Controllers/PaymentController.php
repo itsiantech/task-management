@@ -106,14 +106,24 @@ class PaymentController extends Controller
         $monthYear = $request->get('month_year', now()->format('Y-m'));
         $showAllMonths = $monthYear === 'all';
         $hasPaymentsTable = Schema::hasTable('payments');
+        $from = $request->input('from');
+        $to = $request->input('to');
+        $dateFiltered = (bool) ($from || $to);
 
-        $payments = $hasPaymentsTable
-            ? Payment::with(['task'])
+        if ($hasPaymentsTable) {
+            $paymentsQuery = Payment::with(['task'])
                 ->where('user_id', $selectedUser->id)
-                ->when(! $showAllMonths && $monthYear, fn ($query) => $query->where('month_year', $monthYear))
-                ->orderByDesc('payment_date')
-                ->get()
-            : collect();
+                ->when($dateFiltered && $from, fn ($query) => $query->whereDate('payment_date', '>=', $from))
+                ->when($dateFiltered && $to, fn ($query) => $query->whereDate('payment_date', '<=', $to))
+                ->when(! $dateFiltered && ! $showAllMonths && $monthYear, fn ($query) => $query->where('month_year', $monthYear))
+                ->orderByDesc('payment_date');
+
+            $paymentsTotal = (float) (clone $paymentsQuery)->sum('amount');
+            $payments = $paymentsQuery->paginate(15)->withQueryString();
+        } else {
+            $paymentsTotal = 0;
+            $payments = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15);
+        }
 
         $tasks = $selectedUser->tasks()->with(['members', 'assignee', 'creator'])->get();
 
@@ -139,7 +149,7 @@ class PaymentController extends Controller
 
         $dueBalance = $tasks->sum('due_amount');
 
-        return view('payments.member-ledger', compact('selectedUser', 'payments', 'tasks', 'monthSummary', 'monthYear', 'dueBalance', 'advanceBalance', 'showAllMonths'));
+        return view('payments.member-ledger', compact('selectedUser', 'payments', 'paymentsTotal', 'tasks', 'monthSummary', 'monthYear', 'dueBalance', 'advanceBalance', 'showAllMonths', 'from', 'to', 'dateFiltered'));
     }
 
     public function memberDirectory(Request $request)

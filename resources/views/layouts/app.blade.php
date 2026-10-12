@@ -1,11 +1,13 @@
 @php
     $user = auth()->user();
     $isAdmin = $user && method_exists($user, 'isAdmin') ? $user->isAdmin() : false;
+    $isAccountant = $user && method_exists($user, 'isAccountant') ? $user->isAccountant() : false;
     $mainDashboardRoute = route('tasks.index');
     $leadManagementRoute = route('lead-management.index');
     $financialRoute = $isAdmin ? route('admin.payments') : route('payments.member');
     $membersRoute = $isAdmin ? route('admin.members') : route('payments.member');
     $leadNavOpen = request()->routeIs('lead-management.*') || request()->routeIs('clients.*');
+    $accountsNavOpen = request()->routeIs('accounts.*');
     $siteTitle = \App\Models\Setting::get('site_title', 'ITsian CRM');
     $siteLogo = \App\Models\Setting::logoUrl();
 @endphp
@@ -18,6 +20,7 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <title>@hasSection('title')@yield('title') | {{ $siteTitle }}@else{{ $siteTitle }}@endif</title>
         <script src="https://cdn.tailwindcss.com"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
         @stack('head')
     </head>
     <body class="bg-[#f3f4f6] text-slate-800 antialiased">
@@ -83,12 +86,47 @@
                             Invoice
                         </a>
 
+                        @if($isAdmin || $isAccountant)
+                        <div data-accounts-menu-group class="rounded-xl {{ $accountsNavOpen ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600' }}">
+                            <button type="button" data-accounts-menu-toggle class="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm font-medium focus:outline-none" aria-expanded="{{ $accountsNavOpen ? 'true' : 'false' }}">
+                                <span class="flex items-center gap-3">
+                                    <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8">
+                                        <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    Accounts
+                                </span>
+                                <svg viewBox="0 0 24 24" class="h-4 w-4 transition-transform duration-200 {{ $accountsNavOpen ? 'rotate-90 text-slate-700' : 'text-slate-500' }}" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="m9 6 6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                            <div data-accounts-menu class="space-y-1 px-2 pb-2 {{ $accountsNavOpen ? '' : 'hidden' }}">
+                                <a href="{{ route('accounts.dashboard') }}" class="block rounded-lg px-3 py-2 text-sm {{ request()->routeIs('accounts.dashboard') ? 'bg-violet-50 text-violet-700 font-medium' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">Dashboard</a>
+                                <a href="{{ route('accounts.orders.index') }}" class="block rounded-lg px-3 py-2 text-sm {{ request()->routeIs('accounts.orders.*') ? 'bg-violet-50 text-violet-700 font-medium' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">Orders</a>
+                                <a href="{{ route('accounts.invoices.index') }}" class="block rounded-lg px-3 py-2 text-sm {{ request()->routeIs('accounts.invoices.*') ? 'bg-violet-50 text-violet-700 font-medium' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">Invoices</a>
+                                <a href="{{ route('accounts.payments.index') }}" class="block rounded-lg px-3 py-2 text-sm {{ request()->routeIs('accounts.payments.*') ? 'bg-violet-50 text-violet-700 font-medium' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">Payments</a>
+                                <a href="{{ route('clients.index') }}" class="block rounded-lg px-3 py-2 text-sm {{ request()->routeIs('clients.*') ? 'bg-violet-50 text-violet-700 font-medium' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">Clients</a>
+                                <a href="{{ route('accounts.services.index') }}" class="block rounded-lg px-3 py-2 text-sm {{ request()->routeIs('accounts.services.*') ? 'bg-violet-50 text-violet-700 font-medium' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">Services</a>
+                                <a href="{{ route('accounts.expenses.index') }}" class="block rounded-lg px-3 py-2 text-sm {{ request()->routeIs('accounts.expenses.*') ? 'bg-violet-50 text-violet-700 font-medium' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">Expenses</a>
+                                <a href="{{ route('accounts.payment-accounts.index') }}" class="block rounded-lg px-3 py-2 text-sm {{ request()->routeIs('accounts.payment-accounts.*') ? 'bg-violet-50 text-violet-700 font-medium' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">Payment Accounts</a>
+                                <a href="{{ route('accounts.reports.index') }}" class="block rounded-lg px-3 py-2 text-sm {{ request()->routeIs('accounts.reports.*') ? 'bg-violet-50 text-violet-700 font-medium' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">Reports</a>
+                            </div>
+                        </div>
+                        @endif
+
                         <a href="{{ route('boards.index') }}" class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium {{ request()->routeIs('boards.*') ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:bg-white hover:text-slate-900' }}">
                             <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8">
                                 <rect x="3" y="4" width="18" height="16" rx="2"/>
                                 <path d="M8 8v6M12 8v9M16 8v4" stroke-linecap="round"/>
                             </svg>
                             Kanban Boards
+                        </a>
+
+                        <a href="{{ route('cloudvault') }}" class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium {{ request()->routeIs('cloudvault') ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:bg-white hover:text-slate-900' }}">
+                            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <rect x="3" y="4" width="18" height="16" rx="2"/>
+                                <path d="M3 9h18M9 9v11" stroke-linecap="round"/>
+                            </svg>
+                            CloudVault Sheets
                         </a>
 
                         <div data-lead-menu-group class="rounded-xl {{ $leadNavOpen ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600' }}">
@@ -137,7 +175,7 @@
                                     <circle cx="9.5" cy="7" r="3.5"/>
                                     <path d="M19 19v-1a4 4 0 0 0-3-3.87M15 4.13a3.5 3.5 0 0 1 0 6.74" stroke-linecap="round"/>
                                 </svg>
-                                Members
+                                Team Members
                             </a>
                         @endif
 
@@ -159,7 +197,25 @@
                                 </svg>
                                 Setup
                             </a>
+
+                            <a href="{{ route('admin.announcements.index') }}" class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium {{ request()->routeIs('admin.announcements*') ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:bg-white hover:text-slate-900' }}">
+                                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8">
+                                    <path d="M3 10v4a1 1 0 0 0 1 1h2l3.6 3.2a1 1 0 0 0 1.65-.76V6.56a1 1 0 0 0-1.65-.76L6 9H4a1 1 0 0 0-1 1Z" stroke-linejoin="round"/>
+                                    <path d="M15 9.5a3.5 3.5 0 0 1 0 5M18 7.5a7 7 0 0 1 0 9" stroke-linecap="round"/>
+                                </svg>
+                                Announcements
+                            </a>
                         @endif
+                    </div>
+
+                    <div>
+                        <a href="{{ route('profile.show') }}" class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium {{ request()->routeIs('profile.*') ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:bg-white hover:text-slate-900' }}">
+                            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <circle cx="12" cy="8" r="3.5"/>
+                                <path d="M5 20a7 7 0 0 1 14 0" stroke-linecap="round"/>
+                            </svg>
+                            My Profile
+                        </a>
                     </div>
 
                     <div class="mt-8 border-t border-slate-200 pt-4">
@@ -221,12 +277,45 @@
                         </svg>
                         Social Chat
                     </a>
+                    @if($isAdmin || $isAccountant)
+                    <div data-accounts-menu-group class="rounded-xl {{ $accountsNavOpen ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600' }}">
+                        <button type="button" data-accounts-menu-toggle class="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm font-medium focus:outline-none" aria-expanded="{{ $accountsNavOpen ? 'true' : 'false' }}">
+                            <span class="flex items-center gap-3">
+                                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8">
+                                    <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                Accounts
+                            </span>
+                            <svg viewBox="0 0 24 24" class="h-4 w-4 transition-transform duration-200 {{ $accountsNavOpen ? 'rotate-90 text-slate-700' : 'text-slate-500' }}" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="m9 6 6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                        <div data-accounts-menu class="space-y-1 px-2 pb-2 {{ $accountsNavOpen ? '' : 'hidden' }}">
+                            <a href="{{ route('accounts.dashboard') }}" class="block rounded-lg px-3 py-2 text-sm {{ request()->routeIs('accounts.dashboard') ? 'bg-violet-50 text-violet-700 font-medium' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">Dashboard</a>
+                            <a href="{{ route('accounts.orders.index') }}" class="block rounded-lg px-3 py-2 text-sm {{ request()->routeIs('accounts.orders.*') ? 'bg-violet-50 text-violet-700 font-medium' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">Orders</a>
+                            <a href="{{ route('accounts.invoices.index') }}" class="block rounded-lg px-3 py-2 text-sm {{ request()->routeIs('accounts.invoices.*') ? 'bg-violet-50 text-violet-700 font-medium' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">Invoices</a>
+                            <a href="{{ route('accounts.payments.index') }}" class="block rounded-lg px-3 py-2 text-sm {{ request()->routeIs('accounts.payments.*') ? 'bg-violet-50 text-violet-700 font-medium' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">Payments</a>
+                            <a href="{{ route('clients.index') }}" class="block rounded-lg px-3 py-2 text-sm {{ request()->routeIs('clients.*') ? 'bg-violet-50 text-violet-700 font-medium' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">Clients</a>
+                            <a href="{{ route('accounts.services.index') }}" class="block rounded-lg px-3 py-2 text-sm {{ request()->routeIs('accounts.services.*') ? 'bg-violet-50 text-violet-700 font-medium' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">Services</a>
+                            <a href="{{ route('accounts.expenses.index') }}" class="block rounded-lg px-3 py-2 text-sm {{ request()->routeIs('accounts.expenses.*') ? 'bg-violet-50 text-violet-700 font-medium' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">Expenses</a>
+                            <a href="{{ route('accounts.payment-accounts.index') }}" class="block rounded-lg px-3 py-2 text-sm {{ request()->routeIs('accounts.payment-accounts.*') ? 'bg-violet-50 text-violet-700 font-medium' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">Payment Accounts</a>
+                            <a href="{{ route('accounts.reports.index') }}" class="block rounded-lg px-3 py-2 text-sm {{ request()->routeIs('accounts.reports.*') ? 'bg-violet-50 text-violet-700 font-medium' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">Reports</a>
+                        </div>
+                    </div>
+                    @endif
                     <a href="{{ route('boards.index') }}" class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium {{ request()->routeIs('boards.*') ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:bg-white hover:text-slate-900' }}">
                         <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8">
                             <rect x="3" y="4" width="18" height="16" rx="2"/>
                             <path d="M8 8v6M12 8v9M16 8v4" stroke-linecap="round"/>
                         </svg>
                         Kanban Boards
+                    </a>
+                    <a href="{{ route('cloudvault') }}" class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium {{ request()->routeIs('cloudvault') ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:bg-white hover:text-slate-900' }}">
+                        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <rect x="3" y="4" width="18" height="16" rx="2"/>
+                            <path d="M3 9h18M9 9v11" stroke-linecap="round"/>
+                        </svg>
+                        CloudVault Sheets
                     </a>
                     <div data-lead-menu-group class="rounded-xl {{ $leadNavOpen ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600' }}">
                         <button type="button" data-lead-menu-toggle class="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm font-medium focus:outline-none" aria-expanded="{{ $leadNavOpen ? 'true' : 'false' }}">
@@ -271,7 +360,7 @@
                                 <circle cx="9.5" cy="7" r="3.5"/>
                                 <path d="M19 19v-1a4 4 0 0 0-3-3.87M15 4.13a3.5 3.5 0 0 1 0 6.74" stroke-linecap="round"/>
                             </svg>
-                            Members
+                            Team Members
                         </a>
                     @endif
                     @if ($isAdmin)
@@ -381,11 +470,11 @@
             const overlay = document.getElementById('mobileSidebarOverlay');
             const sidebarToggle = document.getElementById('sidebarToggle');
             const mobileSidebarClose = document.getElementById('mobileSidebarClose');
-            const leadMenuGroups = document.querySelectorAll('[data-lead-menu-group]');
+            const menuGroups = document.querySelectorAll('[data-lead-menu-group], [data-accounts-menu-group]');
 
-            leadMenuGroups.forEach((group) => {
-                const button = group.querySelector('[data-lead-menu-toggle]');
-                const panel = group.querySelector('[data-lead-menu]');
+            menuGroups.forEach((group) => {
+                const button = group.querySelector('[data-lead-menu-toggle], [data-accounts-menu-toggle]');
+                const panel = group.querySelector('[data-lead-menu], [data-accounts-menu]');
                 if (! button || ! panel) return;
 
                 button.addEventListener('click', function (event) {

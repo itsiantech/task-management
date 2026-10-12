@@ -80,6 +80,7 @@ class KanbanBoardController extends Controller
         $role = $board->roleFor($user);
         $canEdit = in_array($role, ['owner', 'editor'], true);
         $canManage = $role === 'owner';
+        $canMove = $role !== null;
 
         $teamMembers = $canManage
             ? User::where('is_approved', true)->where('id', '!=', $board->created_by)->orderBy('name')->get()
@@ -87,7 +88,7 @@ class KanbanBoardController extends Controller
 
         $sharedRoles = $board->memberships->pluck('role', 'user_id');
 
-        return view('boards.show', compact('board', 'role', 'canEdit', 'canManage', 'teamMembers', 'sharedRoles'));
+        return view('boards.show', compact('board', 'role', 'canEdit', 'canManage', 'canMove', 'teamMembers', 'sharedRoles'));
     }
 
     public function update(Request $request, Board $board)
@@ -298,7 +299,14 @@ class KanbanBoardController extends Controller
         ]);
 
         $board = Board::findOrFail($validated['board_id']);
-        $this->authorize('contribute', $board);
+
+        // Reordering lists needs edit rights; moving cards is allowed
+        // for every board member (owner / editor / viewer).
+        if (! empty($validated['column_order'])) {
+            $this->authorize('contribute', $board);
+        } else {
+            $this->authorize('move', $board);
+        }
 
         $boardColumnIds = $board->columns()->pluck('id')->all();
 

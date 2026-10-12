@@ -16,6 +16,7 @@
     $boardData = [
         'id' => $board->id,
         'canEdit' => $canEdit,
+        'canMove' => $canMove ?? false,
         'columns' => $board->columns->map(fn ($col) => [
             'id' => $col->id,
             'title' => $col->title,
@@ -84,6 +85,7 @@
     </div>
 
     {{-- Board --}}
+    <p class="mb-3 text-xs text-slate-500">✥ Drag cards left / right / up / down to move them &middot; click a card to open it.</p>
     <div class="flex items-start gap-4 overflow-x-auto pb-6">
         <div id="columns" class="flex items-start gap-4"></div>
 
@@ -98,7 +100,7 @@
 
 {{-- Card details modal --}}
 <div id="cardModal" class="fixed inset-0 z-50 hidden items-start justify-center overflow-y-auto bg-slate-900/50 p-4">
-    <div class="my-8 w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
+    <div class="my-8 flex w-full max-w-2xl flex-col rounded-2xl bg-white p-6 shadow-xl max-h-[85vh] overflow-y-auto">
         <div class="mb-4 flex items-start justify-between gap-3">
             <div class="flex-1">
                 <label for="cardTitle" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Title</label>
@@ -251,6 +253,7 @@
     const POSITION_URL = @json(route('kanban.update-position'));
     const CSRF = document.querySelector('meta[name="csrf-token"]').content;
     const canEdit = BOARD.canEdit;
+    const canMove = BOARD.canMove;
 
     const $ = (id) => document.getElementById(id);
     const columnsEl = $('columns');
@@ -294,7 +297,7 @@
 
     /* ---------- rendering ---------- */
     function renderCard(card) {
-        const div = el('div', 'kb-card cursor-pointer rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-sm hover:border-indigo-300 hover:shadow');
+        const div = el('div', 'kb-card cursor-pointer rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-sm hover:border-indigo-300 hover:shadow' + (canMove ? ' cursor-grab active:cursor-grabbing' : ''));
         div.dataset.id = card.id;
         div.appendChild(el('p', 'kb-card-title break-words font-medium text-slate-800', card.title));
         const badges = el('div', 'kb-card-badges mt-2 flex items-center gap-2 text-slate-400 empty:hidden');
@@ -392,7 +395,7 @@
             wrap.appendChild(form);
         }
 
-        if (canEdit) initCardSortable(list);
+        if (canMove) initCardSortable(list);
         return wrap;
     }
 

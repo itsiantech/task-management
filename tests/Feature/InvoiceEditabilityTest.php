@@ -68,9 +68,11 @@ class InvoiceEditabilityTest extends TestCase
         $invoice->refresh();
 
         $this->assertSame('Updated note', $invoice->notes);
-        $this->assertSame('Paid', $invoice->status);
+        // Totals are recalculated on save, so the status normalizes to the
+        // canonical lowercase value (1600 paid of 1600 due => paid).
+        $this->assertSame('paid', $invoice->status);
         $this->assertSame('bkash', $invoice->payment_method);
-        $this->assertSame('1800.00', (string) $invoice->items()->first()->amount);
-        $this->assertSame('1600.00', (string) $invoice->transactions()->first()->amount);
+        $this->assertSame(1800.0, (float) $invoice->items()->first()->amount);
+        $this->assertSame(1600.0, (float) $invoice->transactions()->first()->amount);
     }
 }

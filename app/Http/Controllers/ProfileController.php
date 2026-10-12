@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Payment;
+use App\Models\Task;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -12,7 +15,25 @@ class ProfileController extends Controller
 {
     public function show(Request $request)
     {
-        return view('profile.edit', ['user' => $request->user()]);
+        $user = $request->user();
+        $taskHistory = null;
+        $salaryStats = null;
+
+        if ($user->role === 'member') {
+            $taskHistory = Task::assignedTo($user->id)
+                ->with(['assignee'])
+                ->orderByDesc('id')
+                ->paginate(8, ['*'], 'tasks');
+
+            $hasPaymentsTable = Schema::hasTable('payments');
+            $salaryStats = [
+                'monthly_salary' => $user->monthly_salary,
+                'this_month' => $hasPaymentsTable ? (float) Payment::where('user_id', $user->id)->where('month_year', now()->format('Y-m'))->sum('amount') : 0,
+                'all_time' => $hasPaymentsTable ? (float) Payment::where('user_id', $user->id)->sum('amount') : 0,
+            ];
+        }
+
+        return view('profile.edit', ['user' => $user, 'taskHistory' => $taskHistory, 'salaryStats' => $salaryStats]);
     }
 
     public function update(Request $request)

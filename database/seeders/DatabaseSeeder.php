@@ -21,5 +21,10 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call(AdminUserSeeder::class);
+
+        // Accounts module seeders (uncomment to run)
+        // $this->call(ServiceSeeder::class);
+        // $this->call(PaymentAccountSeeder::class);
+        // $this->call(AccountsDemoSeeder::class);
     }
 }

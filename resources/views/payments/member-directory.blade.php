@@ -1,13 +1,13 @@
 @extends('layouts.app')
 
-@section('title', 'Member Directory')
+@section('title', 'Team Member Directory')
 
 @section('content')
 <div class="mx-auto max-w-6xl">
     <div class="mb-8 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
         <div>
             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-sky-600">Team</p>
-            <h1 class="text-3xl font-bold text-slate-900">Member Directory</h1>
+            <h1 class="text-3xl font-bold text-slate-900">Team Member Directory</h1>
         </div>
         <div class="flex flex-wrap items-center gap-2">
             <a href="{{ route('admin.announcements.index') }}" class="inline-flex items-center justify-center rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-violet-500">Send Notice</a>
@@ -35,7 +35,7 @@
                 <thead class="bg-slate-50">
                     <tr>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">ID</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Member</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Team Member</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Email</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">This Month</th>
                         <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Actions</th>
@@ -95,7 +95,7 @@
             <div>
                 <label for="member_role" class="mb-1 block text-sm font-medium text-slate-700">Role</label>
                 <select id="member_role" name="role" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-800 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200">
-                    <option value="member" @selected(old('role', 'member') === 'member')>Member</option>
+                    <option value="member" @selected(old('role', 'member') === 'member')>Team Member</option>
                     <option value="admin" @selected(old('role') === 'admin')>Admin</option>
                 </select>
                 @if ($addErrors->has('role'))<p class="mt-1 text-xs text-rose-600">{{ $addErrors->first('role') }}</p>@endif
@@ -123,7 +123,7 @@
             </div>
             <div class="flex justify-end gap-2 pt-2">
                 <button type="button" id="cancelAddMember" class="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">Cancel</button>
-                <button type="submit" class="rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-500">Add Member</button>
+                <button type="submit" class="rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-500">Add Team Member</button>
             </div>
         </form>
     </div>

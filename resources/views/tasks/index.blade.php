@@ -52,7 +52,7 @@
     <div class="mb-8 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
         <div>
             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-600">Team Workspace</p>
-            <h1 class="text-2xl font-bold text-slate-900">{{ auth()->user()->isAdmin() ? 'Admin Dashboard' : 'Member Dashboard' }}</h1>
+            <h1 class="text-2xl font-bold text-slate-900">{{ auth()->user()->isAdmin() ? 'Admin Dashboard' : 'Team Member Dashboard' }}</h1>
         </div>
 
         <div class="flex items-center gap-3">
@@ -60,7 +60,7 @@
                 <a href="{{ route('lead-management.index') }}" class="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-700 hover:bg-violet-100">Lead Management</a>
                 <a href="{{ route('admin.approvals') }}" class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100">Approvals</a>
                 <a href="{{ route('admin.payments') }}" class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100">Financial Ledger</a>
-                <a href="{{ route('admin.members') }}" class="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700 hover:bg-sky-100">Members</a>
+                <a href="{{ route('admin.members') }}" class="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700 hover:bg-sky-100">Team Members</a>
             @else
                 <a href="{{ route('lead-management.index') }}" class="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-700 hover:bg-violet-100">Lead Management</a>
                 <a href="{{ route('payments.member') }}" class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100">My Payments</a>
@@ -106,15 +106,18 @@
         <div class="flex flex-wrap gap-2">
             @php
                 $statusTabs = [
+                    'in_progress' => 'In Progress',
+                    'pending' => 'Pending',
+                    'hold' => 'Hold',
                     'all' => 'All Tasks',
                     'not_started' => 'Not Started',
-                    'in_progress' => 'In Progress',
                     'testing' => 'Testing',
                     'awaiting_feedback' => 'Awaiting Feedback',
+                    'completed' => 'Completed',
                 ];
             @endphp
             @foreach ($statusTabs as $key => $label)
-                <a href="{{ route('tasks.index', ['status' => $key]) }}" class="inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition {{ $selectedStatus === $key ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50' }}">
+                <a href="{{ route('tasks.index', ['status' => $key, 'view' => $view ?? 'table']) }}" class="inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition {{ $selectedStatus === $key ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50' }}">
                     {{ $label }}
                     <span class="inline-flex h-5 min-w-5 items-center justify-center rounded-full {{ $selectedStatus === $key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600' }} px-1.5 text-[10px] font-semibold">
                         {{ $taskCounts[$key] ?? 0 }}
@@ -123,19 +126,34 @@
             @endforeach
         </div>
 
-        @if (auth()->user()->isAdmin())
-            <button type="button" id="openTaskModal" class="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500">+ New Task</button>
-        @endif
+        <div class="flex items-center gap-2">
+            <div class="flex rounded-lg border border-slate-200 bg-white p-1 text-sm font-medium">
+                <a href="{{ route('tasks.index', ['status' => $selectedStatus, 'view' => 'table']) }}" class="rounded-md px-3 py-1.5 {{ ($view ?? 'table') === 'table' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100' }}">Table</a>
+                <a href="{{ route('tasks.index', ['status' => $selectedStatus, 'view' => 'board']) }}" class="rounded-md px-3 py-1.5 {{ ($view ?? 'table') === 'board' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100' }}">Board</a>
+            </div>
+
+            @if (auth()->user()->isAdmin())
+                <button type="button" id="openTaskModal" class="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500">+ New Task</button>
+            @endif
+        </div>
     </div>
 
-    <div class="mb-8 grid gap-4 md:grid-cols-3">
+    @php
+        $pendingBucket = ($taskCounts['pending'] ?? 0) + ($taskCounts['not_started'] ?? 0);
+        $holdBucket = ($taskCounts['hold'] ?? 0) + ($taskCounts['awaiting_feedback'] ?? 0);
+    @endphp
+    <div class="mb-8 grid gap-4 md:grid-cols-4">
         <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <p class="text-sm text-slate-500">Total Tasks</p>
             <p class="mt-2 text-3xl font-bold text-slate-900">{{ $taskCounts['all'] ?? 0 }}</p>
         </div>
-        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p class="text-sm text-slate-500">In Progress</p>
-            <p class="mt-2 text-3xl font-bold text-sky-600">{{ $taskCounts['in_progress'] ?? 0 }}</p>
+        <div class="rounded-2xl border border-amber-200 bg-amber-50/60 p-5 shadow-sm">
+            <p class="text-sm text-amber-700">Pending</p>
+            <p class="mt-2 text-3xl font-bold text-amber-600">{{ $pendingBucket }}</p>
+        </div>
+        <div class="rounded-2xl border border-orange-200 bg-orange-50/60 p-5 shadow-sm">
+            <p class="text-sm text-orange-700">Hold</p>
+            <p class="mt-2 text-3xl font-bold text-orange-600">{{ $holdBucket }}</p>
         </div>
         <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <p class="text-sm text-slate-500">Completed</p>
@@ -143,6 +161,55 @@
         </div>
     </div>
 
+    @if (($view ?? 'table') === 'board')
+        @php
+            $boardColumns = [
+                'pending' => ['label' => 'Pending', 'statuses' => ['pending', 'not_started', 'in_progress'], 'dot' => 'bg-amber-500', 'header' => 'border-amber-200 bg-amber-50/60', 'moves' => ['hold' => '⏸ Hold', 'completed' => '✓ Complete']],
+                'hold' => ['label' => 'Hold', 'statuses' => ['hold', 'testing', 'awaiting_feedback'], 'dot' => 'bg-orange-500', 'header' => 'border-orange-200 bg-orange-50/60', 'moves' => ['pending' => '↩ Pending', 'completed' => '✓ Complete']],
+                'completed' => ['label' => 'Complete', 'statuses' => ['completed'], 'dot' => 'bg-emerald-500', 'header' => 'border-emerald-200 bg-emerald-50/60', 'moves' => ['pending' => '↩ Reopen', 'hold' => '⏸ Hold']],
+            ];
+            $boardStatusLabels = ['pending' => 'Pending', 'not_started' => 'Not Started', 'in_progress' => 'In Progress', 'testing' => 'Testing', 'awaiting_feedback' => 'Awaiting Feedback', 'hold' => 'Hold', 'completed' => 'Completed'];
+        @endphp
+        <div class="grid items-start gap-4 lg:grid-cols-3">
+            @foreach ($boardColumns as $column)
+                @php $columnTasks = $tasks->whereIn('status', $column['statuses'])->values(); @endphp
+                <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-3 shadow-sm">
+                    <div class="mb-3 flex items-center justify-between rounded-xl border px-3 py-2 {{ $column['header'] }}">
+                        <span class="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                            <span class="h-2.5 w-2.5 rounded-full {{ $column['dot'] }}"></span>
+                            {{ $column['label'] }}
+                        </span>
+                        <span class="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-slate-600 shadow-sm">{{ $columnTasks->count() }}</span>
+                    </div>
+                    <div class="space-y-2">
+                        @forelse ($columnTasks as $task)
+                            <div class="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                                <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{{ $task->order_number_label }}</p>
+                                <a href="{{ route('tasks.show', $task) }}" class="mt-0.5 block text-sm font-semibold text-slate-900 hover:text-indigo-700">{{ $task->title }}</a>
+                                <p class="mt-1 text-xs text-slate-500">{{ $task->assignee?->name ?? 'Unassigned' }} · {{ $task->due_date ? $task->due_date->format('M d, Y') : 'No due date' }}</p>
+                                <div class="mt-2 flex flex-wrap items-center gap-1.5">
+                                    <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{{ $boardStatusLabels[$task->status] ?? ucfirst($task->status) }}</span>
+                                    @if ($task->priority)<span class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{{ ucfirst($task->priority) }}</span>@endif
+                                </div>
+                                <div class="mt-2.5 flex flex-wrap gap-1.5 border-t border-slate-100 pt-2">
+                                    @foreach ($column['moves'] as $moveStatus => $moveLabel)
+                                        <form action="{{ route('tasks.status', $task) }}" method="POST">
+                                            @csrf
+                                            @method('PATCH')
+                                            <input type="hidden" name="status" value="{{ $moveStatus }}">
+                                            <button type="submit" class="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-100">{{ $moveLabel }}</button>
+                                        </form>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @empty
+                            <p class="rounded-xl border border-dashed border-slate-300 px-3 py-8 text-center text-xs text-slate-400">No tasks</p>
+                        @endforelse
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    @else
     <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-slate-200 text-left">
@@ -163,17 +230,21 @@
                         @php
                             $taskTags = is_array($task->tags) ? $task->tags : (json_decode($task->tags ?? '[]', true) ?: []);
                             $statusClasses = [
+                                'pending' => 'bg-amber-100 text-amber-700',
                                 'not_started' => 'bg-slate-100 text-slate-700',
                                 'in_progress' => 'bg-sky-100 text-sky-700',
                                 'testing' => 'bg-violet-100 text-violet-700',
                                 'awaiting_feedback' => 'bg-amber-100 text-amber-700',
+                                'hold' => 'bg-orange-100 text-orange-700',
                                 'completed' => 'bg-emerald-100 text-emerald-700',
                             ];
                             $statusLabels = [
+                                'pending' => 'Pending',
                                 'not_started' => 'Not Started',
                                 'in_progress' => 'In Progress',
                                 'testing' => 'Testing',
                                 'awaiting_feedback' => 'Awaiting Feedback',
+                                'hold' => 'Hold',
                                 'completed' => 'Completed',
                             ];
                             $priorityClasses = [
@@ -261,6 +332,7 @@
             </table>
         </div>
     </div>
+    @endif
 </div>
 
 <div id="taskChatDrawer" class="fixed inset-y-0 right-0 z-50 hidden w-full max-w-xl flex-col bg-white shadow-2xl">
@@ -296,6 +368,10 @@
     </div>
 
     <div id="taskChatMessages" class="chat-scroll flex-1 space-y-4 overflow-y-auto bg-slate-50/80 p-4"></div>
+
+    <button id="taskChatNewBadge" type="button" class="absolute bottom-24 left-1/2 z-10 hidden -translate-x-1/2 items-center gap-1 rounded-full bg-slate-900 px-3.5 py-1.5 text-xs font-semibold text-white shadow-lg hover:bg-slate-700">
+        ↓ New messages
+    </button>
 
     <div id="taskChatMediaPanel" class="chat-scroll hidden flex-1 overflow-y-auto bg-slate-50/80 p-4">
         <div class="mb-4 flex items-center gap-2 text-sm font-bold text-slate-800">
@@ -363,11 +439,13 @@
                     <div>
                         <label for="task_status" class="mb-1 block text-sm font-medium text-slate-700">Status</label>
                         <select id="task_status" name="status" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                            <option value="pending">Pending</option>
+                            <option value="hold">Hold</option>
+                            <option value="completed">Completed</option>
                             <option value="not_started">Not Started</option>
                             <option value="in_progress">In Progress</option>
                             <option value="testing">Testing</option>
                             <option value="awaiting_feedback">Awaiting Feedback</option>
-                            <option value="completed">Completed</option>
                         </select>
                     </div>
                     <div>
@@ -457,6 +535,9 @@
     const taskChatMediaGrid = document.getElementById('taskChatMediaGrid');
     const taskChatMediaEmpty = document.getElementById('taskChatMediaEmpty');
     const chatMediaCount = document.getElementById('chatMediaCount');
+    const taskChatNewBadge = document.getElementById('taskChatNewBadge');
+    const CHAT_POLL_MS = 4000;
+    let chatPollTimer = null;
     const taskChatComposer = document.getElementById('taskChatComposer');
     const chatAttachmentPreview = document.getElementById('chatAttachmentPreview');
     const chatAttachmentThumb = document.getElementById('chatAttachmentThumb');
@@ -504,10 +585,12 @@
 
     function formatStatusText(status) {
         const labels = {
+            pending: 'Pending',
             not_started: 'Not Started',
             in_progress: 'In Progress',
             testing: 'Testing',
             awaiting_feedback: 'Awaiting Feedback',
+            hold: 'Hold',
             completed: 'Completed',
         };
 
@@ -516,13 +599,22 @@
 
     function renderTaskComment(comment) {
         const messageText = (comment.message || '').trim();
-        const isOwner = Boolean(comment.is_owner);
+        // Role-based sides (same for every viewer): admin right, team member left.
+        const isAdminMsg = Boolean(comment.is_admin);
+        const isMine = Boolean(comment.is_mine);
+        const isSeen = Boolean(comment.read_at);
         const author = comment.user?.name || 'User';
         const initial = author.trim().charAt(0).toUpperCase() || 'U';
         const commentDate = comment.created_at ? new Date(comment.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Just now';
         const attachmentUrl = comment.attachment_url || null;
         const attachmentType = comment.attachment_type || 'document';
         const safeUrl = attachmentUrl ? attachmentUrl.replace(/"/g, '&quot;') : '';
+        const tickColor = isSeen
+            ? (isAdminMsg ? 'text-sky-300' : 'text-sky-500')
+            : (isAdminMsg ? 'text-violet-200' : 'text-slate-400');
+        const ticks = isMine
+            ? '<svg viewBox="0 0 24 24" class="h-3.5 w-3.5 ' + tickColor + '" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M2.5 12.5 7 17l9.5-10M11 15.5l1.5 1.5L22 7" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+            : '';
 
         let attachmentHtml = '';
         if (attachmentUrl && attachmentType === 'image') {
@@ -538,9 +630,10 @@
         }
 
         const wrapper = document.createElement('div');
-        wrapper.className = 'flex items-end gap-2 ' + (isOwner ? 'justify-end' : 'justify-start');
+        wrapper.className = 'flex items-end gap-2 ' + (isAdminMsg ? 'justify-end' : 'justify-start');
+        wrapper.dataset.commentId = comment.id;
 
-        if (! isOwner) {
+        if (! isAdminMsg) {
             const avatar = document.createElement('div');
             avatar.className = 'flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-600 to-slate-400 text-xs font-semibold text-white';
             avatar.textContent = initial;
@@ -548,13 +641,13 @@
         }
 
         const bubble = document.createElement('div');
-        bubble.className = 'max-w-[80%] rounded-2xl border px-3.5 py-2.5 shadow-sm ' + (isOwner
+        bubble.className = 'max-w-[80%] rounded-2xl border px-3.5 py-2.5 shadow-sm ' + (isAdminMsg
             ? 'rounded-br-md border-violet-200 bg-gradient-to-br from-violet-600 to-indigo-600 text-white'
             : 'rounded-bl-md border-slate-200 bg-white text-slate-700');
 
         const meta = document.createElement('div');
-        meta.className = 'mb-1 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider ' + (isOwner ? 'text-violet-100' : 'text-slate-400');
-        meta.innerHTML = '<span>' + author.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span><span class="normal-case tracking-normal opacity-80">' + commentDate + '</span>';
+        meta.className = 'mb-1 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider ' + (isAdminMsg ? 'text-violet-100' : 'text-slate-400');
+        meta.innerHTML = '<span>' + author.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span><span class="normal-case tracking-normal opacity-80">' + commentDate + '</span>' + ticks;
         bubble.appendChild(meta);
 
         if (messageText) {
@@ -575,12 +668,152 @@
             bubble.appendChild(p);
         }
 
+        const delRow = document.createElement('div');
+        delRow.className = 'mt-1 flex ' + (isAdminMsg ? 'justify-end' : 'justify-start');
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.title = 'Delete message';
+        delBtn.className = 'rounded px-1 text-[11px] font-medium text-slate-400 hover:text-rose-600';
+        delBtn.textContent = 'Delete';
+        delBtn.addEventListener('click', function () {
+            deleteTaskComment(comment.id, wrapper);
+        });
+        delRow.appendChild(delBtn);
+        bubble.appendChild(delRow);
+
         wrapper.appendChild(bubble);
         taskChatMessages.appendChild(wrapper);
     }
 
+    function deleteTaskComment(commentId, wrapper) {
+        if (! confirm('Delete this message? Both sides will no longer see it.')) {
+            return;
+        }
+
+        const base = (currentTaskChat.sendUrl || '').replace(/\/$/, '');
+        if (! base || ! commentId) {
+            return;
+        }
+
+        fetch(base + '/' + commentId, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken || '',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+        })
+            .then(function (response) {
+                if (! response.ok) {
+                    throw new Error('Unable to delete message.');
+                }
+                return response.json();
+            })
+            .then(function () {
+                currentTaskChat.comments = (currentTaskChat.comments || []).filter(function (c) {
+                    return String(c.id) !== String(commentId);
+                });
+                wrapper.remove();
+                rebuildMediaGrid(currentTaskChat.comments);
+            })
+            .catch(function (error) {
+                alert(error.message || 'Unable to delete message.');
+            });
+    }
+
     function scrollTaskChatToBottom() {
         taskChatMessages.scrollTop = taskChatMessages.scrollHeight;
+        hideNewBadge();
+    }
+
+    function isNearBottom() {
+        return taskChatMessages.scrollHeight - taskChatMessages.scrollTop - taskChatMessages.clientHeight < 140;
+    }
+
+    function hideNewBadge() {
+        taskChatNewBadge?.classList.add('hidden');
+        taskChatNewBadge?.classList.remove('flex');
+    }
+
+    function showNewBadge() {
+        taskChatNewBadge?.classList.remove('hidden');
+        taskChatNewBadge?.classList.add('flex');
+    }
+
+    taskChatNewBadge?.addEventListener('click', scrollTaskChatToBottom);
+    taskChatMessages?.addEventListener('scroll', function () {
+        if (isNearBottom()) hideNewBadge();
+    });
+
+    function chatSignature(comments) {
+        return (comments || []).map(function (c) {
+            return c.id + ':' + (c.read_at ? '1' : '0');
+        }).join(',');
+    }
+
+    /* ---------- live sync (no reload): new messages, seen ticks, deletes ---------- */
+    function stopChatPolling() {
+        if (chatPollTimer) {
+            clearInterval(chatPollTimer);
+            chatPollTimer = null;
+        }
+    }
+
+    function startChatPolling() {
+        stopChatPolling();
+        chatPollTimer = setInterval(function () {
+            if (! currentTaskChat.id || ! currentTaskChat.commentsUrl) return;
+            if (taskChatDrawer.classList.contains('hidden')) return;
+            if (document.visibilityState !== 'visible') return;
+            syncTaskChat();
+        }, CHAT_POLL_MS);
+    }
+
+    function renderChatList(comments) {
+        taskChatMessages.innerHTML = '';
+        comments.slice().reverse().forEach(function (comment) {
+            renderTaskComment(comment);
+        });
+    }
+
+    function syncTaskChat() {
+        fetch(currentTaskChat.commentsUrl, {
+            headers: { Accept: 'application/json' },
+        })
+            .then(function (response) {
+                if (! response.ok) {
+                    throw new Error('sync failed');
+                }
+                return response.json();
+            })
+            .then(function (data) {
+                const fresh = data.comments || [];
+                const signature = chatSignature(fresh);
+
+                currentTaskChat.comments = fresh;
+
+                if (signature === currentTaskChat.signature) {
+                    return;
+                }
+
+                currentTaskChat.signature = signature;
+                const stick = isNearBottom();
+                const prevHeight = taskChatMessages.scrollHeight;
+                const prevTop = taskChatMessages.scrollTop;
+
+                renderChatList(fresh);
+                rebuildMediaGrid(fresh);
+
+                if (stick) {
+                    scrollTaskChatToBottom();
+                } else {
+                    taskChatMessages.scrollTop = prevTop + (taskChatMessages.scrollHeight - prevHeight);
+                    showNewBadge();
+                }
+            })
+            .catch(function () {
+                /* keep old messages on transient failure */
+            });
     }
 
     /* ---------- media folder (images from this chat) ---------- */
@@ -646,6 +879,8 @@
                 taskChatMessages.innerHTML = '';
                 const comments = data.comments || [];
                 currentTaskChat.comments = comments;
+                currentTaskChat.signature = chatSignature(comments);
+                hideNewBadge();
 
                 if (! comments.length) {
                     taskChatMessages.innerHTML = '<div class="flex h-full items-center justify-center text-center text-sm text-slate-500">No messages yet.<br>Say hello and start the conversation.</div>';
@@ -673,7 +908,10 @@
 
         currentTaskChat.id = button.dataset.taskId;
         currentTaskChat.sendUrl = sendUrl;
+        currentTaskChat.commentsUrl = commentsUrl || null;
         currentTaskChat.comments = [];
+        currentTaskChat.signature = '';
+        hideNewBadge();
 
         taskChatTitle.textContent = title;
         taskChatStatus.textContent = status;
@@ -682,6 +920,7 @@
         taskChatDrawer.classList.remove('hidden');
         taskChatDrawer.classList.add('flex');
         switchChatTab('chat');
+        startChatPolling();
 
         if (commentsUrl) {
             loadTaskComments(commentsUrl);
@@ -695,6 +934,7 @@
     });
 
     document.getElementById('closeTaskChat')?.addEventListener('click', function () {
+        stopChatPolling();
         taskChatDrawer.classList.add('hidden');
         taskChatDrawer.classList.remove('flex');
     });
@@ -783,7 +1023,8 @@
             .then(function (data) {
                 const comment = data.comment;
                 if (comment) {
-                    currentTaskChat.comments = (currentTaskChat.comments || []).concat([comment]);
+                    currentTaskChat.comments = [comment].concat(currentTaskChat.comments || []);
+                    currentTaskChat.signature = chatSignature(currentTaskChat.comments);
                     renderTaskComment(comment);
                     rebuildMediaGrid(currentTaskChat.comments);
                     scrollTaskChatToBottom();
