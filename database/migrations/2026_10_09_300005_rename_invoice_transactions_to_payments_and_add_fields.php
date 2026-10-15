@@ -21,7 +21,6 @@ return new class extends Migration
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete()->after('note');
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete()->after('created_by');
 
-            $table->index('payment_date');
             $table->index('method');
             $table->index('client_id');
         });
@@ -30,7 +29,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('account_payments', function (Blueprint $table) {
-            $table->dropIndex(['account_payments_payment_date_index']);
             $table->dropIndex(['account_payments_method_index']);
             $table->dropIndex(['account_payments_client_id_index']);
             $table->dropColumn(['client_id', 'order_id', 'method', 'receiving_account', 'note', 'created_by', 'updated_by']);

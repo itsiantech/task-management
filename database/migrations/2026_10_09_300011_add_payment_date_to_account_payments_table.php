@@ -11,6 +11,7 @@ return new class extends Migration
     {
         Schema::table('account_payments', function (Blueprint $table) {
             $table->date('payment_date')->nullable()->after('transaction_date');
+			$table->index('payment_date'); 
         });
 
         DB::table('account_payments')
