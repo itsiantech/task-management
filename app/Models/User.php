@@ -7,6 +7,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class User extends Authenticatable
@@ -106,7 +107,6 @@ class User extends Authenticatable
         $max = (int) static::query()
             ->whereNotNull('member_code')
             ->where('member_code', 'like', 'M-%')
-            ->selectRaw('MAX(CAST(SUBSTR(member_code, 3) AS INTEGER)) as max_code')
 			->selectRaw('MAX(CAST(SUBSTR(member_code, 3) AS ' . (DB::connection()->getDriverName() === 'mysql' ? 'UNSIGNED' : 'INTEGER') . ')) as max_code')
             ->value('max_code');
 
