@@ -107,6 +107,7 @@ class User extends Authenticatable
             ->whereNotNull('member_code')
             ->where('member_code', 'like', 'M-%')
             ->selectRaw('MAX(CAST(SUBSTR(member_code, 3) AS INTEGER)) as max_code')
+			->selectRaw('MAX(CAST(SUBSTR(member_code, 3) AS ' . (DB::connection()->getDriverName() === 'mysql' ? 'UNSIGNED' : 'INTEGER') . ')) as max_code')
             ->value('max_code');
 
         return 'M-' . str_pad((string) ($max + 1), 4, '0', STR_PAD_LEFT);
